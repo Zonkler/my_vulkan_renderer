@@ -1,0 +1,50 @@
+﻿cmake_minimum_required(VERSION 3.16)
+project(vulkan_guide)
+
+# Vulkan SDK
+find_package(Vulkan REQUIRED)
+
+# Output folders
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+
+# Optional optimization for MinGW
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-march=native)
+endif()
+
+# Third-party deps
+add_subdirectory(third_party)
+
+# Collect source files
+file(GLOB_RECURSE SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE HEADERS
+    "${PROJECT_SOURCE_DIR}/include/*.h"
+    "${PROJECT_SOURCE_DIR}/include/*.hpp"
+)
+
+# Main executable
+add_executable(vulkan_guide ${SOURCES} ${HEADERS})
+
+set_property(TARGET vulkan_guide PROPERTY CXX_STANDARD 20)
+target_compile_definitions(vulkan_guide PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+
+target_include_directories(vulkan_guide PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+    "${PROJECT_SOURCE_DIR}/third_party"
+)
+
+target_link_libraries(vulkan_guide PUBLIC
+    vma glm Vulkan::Vulkan fmt::fmt stb_image SDL2::SDL2 vkbootstrap imgui
+)
+
+target_precompile_headers(vulkan_guide PUBLIC 
+    <optional> <vector> <memory> <string> <unordered_map>
+    <glm/mat4x4.hpp> <glm/vec4.hpp> <vulkan/vulkan.h>
+)
+
+# Copy DLLs after build (useful for MinGW)
+add_custom_command(TARGET vulkan_guide POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:vulkan_guide> $<TARGET_FILE_DIR:vulkan_guide>
+    COMMAND_EXPAND_LISTS
+)
