@@ -1,40 +1,49 @@
 #include <iostream>
 #include <vulkan/vulkan.h>
 #include "tools/tools.hpp"
-#include <glm.hpp>
+#include <glm/glm.hpp>
+#include <vector>
 #define SDL_MAIN_HANDLED
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
+#include "window/window.hpp"
+#include "engine/VulkanRenderdata.hpp"
+#include "engine/VulkanLayerAndExtension.hpp"
+#include "engine/VulkanInstance.hpp"
+#include "engine/VulkanDevice.hpp"
+#include "engine/VulkanDebug.hpp"
+#include <thread>
 
-#define APPNAME "Vulkan renderer"
+#define DEBUG
 
 int main() {
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-        return -1;
-    }
 
-    // Load Vulkan library
-    if (SDL_Vulkan_LoadLibrary(nullptr) != 0) {
-        std::cerr << "Failed to load Vulkan library: " << SDL_GetError() << std::endl;
-        return -1;
-    }
+    std::vector<const char *> deviceExtensionNames = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-    // Create SDL window with Vulkan support
-    SDL_Window* window = SDL_CreateWindow(
-        APPNAME,
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        640, 360,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN
-    );
+    VulkanRenderData VKrenderData{};
+    VKrenderData.rdHeight=640;
+    VKrenderData.rdWidth=640;
+    VKrenderData.appname = "MyVKRenderer";
+    #ifdef DEBUG
 
-    if (!window) {
-        std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
-        return -1;
-    }
-	Logger::log(0,"SDL window and vulkan library successfully initialized");
+    #endif
+
+    window MyWindow(VKrenderData);
+    VulkanLayerAndExtension VKlayernExt(VKrenderData);
+    VulkanInstance VKinstance(VKrenderData);
+    VulkanDebug VKDebug(VKinstance.Get_VKinstance());
+
+    VulkanDevice VKdevice(VKinstance.Get_VKinstance(),deviceExtensionNames);
+
+    /*
+    this is for triggering an error to test the debugger
+    VkSurfaceKHR surface;
+    SDL_Vulkan_CreateSurface(VKrenderData.window, VKinstance.Get_VKinstance(), &surface);
+    vkDestroyInstance(VKinstance.Get_VKinstance(), nullptr);
+    */
+
+
 
     // Main loop
     bool running = true;
@@ -46,15 +55,10 @@ int main() {
             }
         }
 
-        // Rendering would go here
+        // Rendering 
 
-        SDL_Delay(16); // ~60 FPS
+        SDL_Delay(16); // 60 FPS
     }
-
-    // Clean up
-    SDL_DestroyWindow(window);
-    SDL_Vulkan_UnloadLibrary();
-    SDL_Quit();
-
+    
     return 0;
 }
