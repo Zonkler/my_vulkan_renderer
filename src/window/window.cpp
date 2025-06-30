@@ -30,7 +30,6 @@ window::window(VulkanRenderData& rData)
         std::cerr << "Failed to create window: " << SDL_GetError() << std::endl;
         //return -1;
     }
-
     m_window = rData.window;
 	
     Logger::log(0,"LOGGER::WINDOW:: SDL window and vulkan library initialized\n");

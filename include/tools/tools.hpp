@@ -1,17 +1,21 @@
 /* simple Logger class */
 #pragma once
 #include <cstdio>
+#include <format>
+#include <iostream>
+
+//#define MAGMA_ASSERT (cond)
+
 
 
 class Logger {
   public:
     /* log if input log level is equal or smaller to log level set */
     template <typename... Args>
-    static void log(unsigned int logLevel, Args ... args) {
+    static void log(unsigned int logLevel, std::format_string<Args...> fmt,Args&& ... args) {
       if (logLevel <= mLogLevel) {
-        std::printf(args ...);
-        /* force output, i.e. for Eclipse */
-        std::fflush(stdout);
+        auto formatted = std::format(fmt, std::forward<Args>(args)...);
+        std::fputs(formatted.c_str(), stdout);
       }
     }
 
