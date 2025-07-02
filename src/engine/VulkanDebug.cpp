@@ -1,23 +1,28 @@
-#include "engine/VulkanDebug.hpp"
-#include "tools/tools.hpp"
 #include <iostream>
 
-VulkanDebug::VulkanDebug(VkInstance instance) : instance(instance) {
+#include "tools/tools.hpp"
+
+#include "engine/VulkanDebug.hpp"
+
+int VulkanDebug::init(VkInstance& instance){
+
+    m_instance = &instance;
     setupDebugMessenger();
-    Logger::log(0,"LOGGER::DEBUG:: Debug created\n");
+    Logger::log(0,"[Logger][Debugger] Debug created\n");
+    return 1;
 
 }
 
-VulkanDebug::~VulkanDebug() {
+void VulkanDebug::destroy(){
+
     if (debugMessenger != VK_NULL_HANDLE) {
-        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*m_instance, "vkDestroyDebugUtilsMessengerEXT");
         if (func) {
-            func(instance, debugMessenger, nullptr);
+            func(*m_instance, debugMessenger, nullptr);
         }
     }
 
-    Logger::log(0,"LOGGER::DEBUG:: Debug destroyed\n");
-
+    Logger::log(0,"[Logger][Debugger] Debug destroyed\n");
 }
 
 void VulkanDebug::setupDebugMessenger() {
@@ -34,9 +39,9 @@ void VulkanDebug::setupDebugMessenger() {
     createInfo.pfnUserCallback = debugCallback;
     createInfo.pUserData = nullptr; // Optional
 
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*m_instance, "vkCreateDebugUtilsMessengerEXT");
 
-    if (func && func(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+    if (func && func(*m_instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
         std::cerr << "Failed to set up debug messenger!\n";
     }
 }
@@ -45,7 +50,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebug::debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* /*userData*/) {
+    void* /*userData*/){
 
     std::cerr <<"SKIBIDIIIIII [Validation Layer] " << pCallbackData->pMessage << std::endl;
 

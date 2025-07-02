@@ -57,14 +57,4 @@ private:
 		VkImageView		view;
 	}Depth;
 
-
-
-
-    //TESTING
-    VkRenderPass renderPass;
-    std::vector<VkFramebuffer> framebuffers;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkCommandBuffer commandBuffer;
-
 };

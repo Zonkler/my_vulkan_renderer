@@ -1,15 +1,23 @@
 #pragma once
-#include <vulkan/vulkan.h>
 #include <vector>
+#include <vulkan/vulkan.h>
 #include "engine/VulkanRenderdata.hpp"
+
 class VulkanLayerAndExtension
 {
 private:
-    
-public:
-    VulkanLayerAndExtension(VulkanRenderData& rData);
+
     int gatherVulkanExtensions(VulkanRenderData& rData);
+
+public:
+
+    VulkanLayerAndExtension()  = default;
+    ~VulkanLayerAndExtension() = default;
+
     
+
+    int init(VulkanRenderData& rData);
+
 };
 
 

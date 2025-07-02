@@ -15,8 +15,8 @@ public:
     VkSurfaceKHR surface;
     std::vector<VkSurfaceFormatKHR> surfFormats;
     VkFormat format;
-    const VkInstance& m_instance;
-    const VkDevice& m_DeviceObj;
+    const VkInstance* m_instance;
+    const VkDevice* m_DeviceObj;
 
     // Store the image surface capabilities
 	VkSurfaceCapabilitiesKHR	surfCapabilities;
@@ -48,8 +48,10 @@ public:
 
 
 public:
-    VulkanSwapchain(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device,const VkCommandBuffer& cmd);
-    ~VulkanSwapchain();
+    VulkanSwapchain()  = default;
+    ~VulkanSwapchain() = default;
+    int init(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device/*,const VkCommandBuffer& cmd*/);
+    void destroy();
 
     void getSupportedFormats(const VulkanDevice& Device);
     void getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& device,const VulkanRenderData& rData);

@@ -20,7 +20,7 @@ void CommandBufferMgr::allocCommandBuffer(const VkDevice* device, const VkComman
 	cmdInfo.pNext		= NULL;
 	cmdInfo.commandPool = cmdPool;
 	cmdInfo.level		= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdInfo.commandBufferCount = (uint32_t) sizeof(cmdBuf) / sizeof(VkCommandBuffer);;
+	cmdInfo.commandBufferCount = 1;
 
 	result = vkAllocateCommandBuffers(*device, &cmdInfo, cmdBuf);
 	assert(!result);
@@ -88,7 +88,7 @@ void CommandBufferMgr::submitCommandBuffer(const VkQueue& queue, const VkCommand
 	submitInfo.waitSemaphoreCount	= 0;
 	submitInfo.pWaitSemaphores		= NULL;
 	submitInfo.pWaitDstStageMask	= NULL;
-	submitInfo.commandBufferCount	= (uint32_t)sizeof(commandBuffer)/sizeof(VkCommandBuffer);
+	submitInfo.commandBufferCount	= 1;
 	submitInfo.pCommandBuffers		= commandBuffer;
 	submitInfo.signalSemaphoreCount = 0;
 	submitInfo.pSignalSemaphores	= NULL;
@@ -99,11 +99,4 @@ void CommandBufferMgr::submitCommandBuffer(const VkQueue& queue, const VkCommand
 	result = vkQueueWaitIdle(queue);
 	assert(!result);
 
-	// Double check this following code need to be implemented.
-	//do {
-	//	res = vkWaitForFences(appObj->deviceObj->device, 1, &drawFence, VK_TRUE, FENCE_TIMEOUT);
-	//} while (res == VK_TIMEOUT);
-	//assert(res == VK_SUCCESS);
-
-	//vkDestroyFence(appObj->deviceObj->device, drawFence, NULL);
 }

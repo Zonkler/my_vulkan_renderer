@@ -5,27 +5,45 @@
 #include <iostream>
 #include <cassert>
 #include "engine/Wrapper.hpp"
-Renderer::Renderer(VulkanRenderData& rData) 
-    : renderData(rData)
-    , myWindow(renderData)
-    , vkLayersExt(renderData)
-    , vkInstance(renderData)
-    , vkDebug(vkInstance.Get_VKinstance())
-    , vkDevice(vkInstance.Get_VKinstance(), {VK_KHR_SWAPCHAIN_EXTENSION_NAME})
-    , vkSwapchain(renderData, vkInstance.Get_VKinstance(), vkDevice,cmdDepthImage)
-{
+
+Renderer::Renderer(VulkanRenderData& rData) : renderData(rData){
     // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
 	memset(&Depth, 0, sizeof(Depth));
-	//memset(&connection, 0, sizeof(HINSTANCE));
-
 }
 
-Renderer::~Renderer() {
-    
+Renderer::~Renderer(){
     cleanup();
 }
 
-bool Renderer::init() {
+bool Renderer::init(){
+
+	if(!myWindow.init(renderData)){
+		Logger::log(0,"[WARNING][Logger][Window] Window initialization failed\n");
+		return false;
+	}
+	
+	if(!vkLayersExt.init(renderData)){
+		Logger::log(0,"[WARNING][Logger][Vulkan layer & extension] Failed retrieving vulkan extensions\n");
+		return false;
+	}
+
+	if(!vkInstance.init(renderData)){
+		Logger::log(0,"[WARNING][Logger][Vulkan Instance] Creation of Vulkan instance failed\n");
+		return false;
+	}
+
+	if(!vkDebug.init(vkInstance.Get_VKinstance())){
+		Logger::log(0,"[WARNING][Logger][Debug] Creation of debugger failed\n");
+		return false;
+	}
+
+	if(!vkDevice.init(vkInstance.Get_VKinstance(), {VK_KHR_SWAPCHAIN_EXTENSION_NAME})){
+		Logger::log(0,"[WARNING][Logger][Device] Creation of Logical device failed\n");
+		return false;
+	}
+
+	vkSwapchain.init(renderData, vkInstance.Get_VKinstance(), vkDevice /*, cmdDepthImage*/);
+
     createCommandPool();
     createDepthImage();
     buildSwapChainAndDepthImage();
@@ -59,17 +77,18 @@ void Renderer::run() {
 }
 
 void Renderer::cleanup() {
-    if (vkDevice.device)
-    {
-        vkDeviceWaitIdle(vkDevice.device);
+	if (vkDevice.device){
+		vkDeviceWaitIdle(vkDevice.device);
+	}
+	destroyDepthBuffer();           
+	vkSwapchain.destroy();         
+	destroyCommandBuffer();        
+	destroyCommandPool();          
 
-    }
-    
-    destroyDepthBuffer();    // Add this
-
-    destroyCommandPool();
-    // Cleanup Vulkan objects if needed
-    // Usually handled by destructors of your Vulkan wrapper classes
+	vkDevice.destroy();            
+	vkDebug.destroy();             
+	vkInstance.destroy();           
+	myWindow.destroy();             
 }
 
 void Renderer::createCommandPool()
@@ -85,7 +104,7 @@ void Renderer::createCommandPool()
 	cmdPoolInfo.flags = 0;
 
 	res = vkCreateCommandPool(deviceObj.device, &cmdPoolInfo, NULL, &cmdPool);
-    Logger::log(0,"LOGGER::RENDERER:: Command pool created\n");
+    Logger::log(0,"[Logger][Renderer] Command pool created\n");
     //assert(res == VK_SUCCESS);
 }
 
@@ -95,7 +114,7 @@ void Renderer::destroyCommandPool()
 
 	vkDestroyCommandPool(deviceObj.device, cmdPool, NULL);
     
-    Logger::log(0,"LOGGER::RENDERER:: Command pool destroyed\n");
+    Logger::log(0,"[Logger][Renderer] Command pool destroyed\n");
 
 }
 
@@ -179,7 +198,7 @@ void Renderer::setImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkIm
 void Renderer::createDepthImage()
 {
 	VkResult  result;
-	bool  pass;
+	bool  	  pass;
 
 	VkImageCreateInfo imageInfo = {};
 
@@ -207,8 +226,8 @@ void Renderer::createDepthImage()
 	imageInfo.pNext			= NULL;
 	imageInfo.imageType		= VK_IMAGE_TYPE_2D;
 	imageInfo.format		= depthFormat;
-	imageInfo.extent.width	= renderData.rdWidth;
-	imageInfo.extent.height = renderData.rdHeight;
+	imageInfo.extent.width	= vkSwapchain.swapChainExtent.width;
+	imageInfo.extent.height = vkSwapchain.swapChainExtent.height;
 	imageInfo.extent.depth	= 1;
 	imageInfo.mipLevels		= 1;
 	imageInfo.arrayLayers	= 1;
@@ -284,12 +303,12 @@ void Renderer::createDepthImage()
 	imgViewInfo.image = Depth.image;
 	result = vkCreateImageView(vkDevice.device, &imgViewInfo, NULL, &Depth.view);
 	assert(result == VK_SUCCESS);
+
+	Logger::log(0,"[Logger][Renderer] Depth Buffer created\n");
+
 }
 
 void Renderer::buildSwapChainAndDepthImage(){
-    //createDepthImage();
-    
-    // Then create swapchain image views
     vkSwapchain.createColorImageView(cmdDepthImage,vkDevice);
 }
 
@@ -297,6 +316,8 @@ void Renderer::destroyDepthBuffer(){
     vkDestroyImageView(vkDevice.device, Depth.view, NULL);
 	vkDestroyImage(vkDevice.device, Depth.image, NULL);
 	vkFreeMemory(vkDevice.device, Depth.mem, NULL);
+	Logger::log(0,"[Logger][Renderer] Depth Buffer destroyed\n");
+
 
 
 }

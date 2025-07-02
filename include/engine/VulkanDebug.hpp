@@ -3,11 +3,15 @@
 
 class VulkanDebug {
 public:
-    VulkanDebug(VkInstance instance);
-    ~VulkanDebug();
+
+    VulkanDebug()  = default;
+    ~VulkanDebug() = default;
+
+    int init(VkInstance& instance);
+    void destroy();
 
 private:
-    VkInstance instance;
+    VkInstance * m_instance;
     VkDebugUtilsMessengerEXT debugMessenger;
 
     void setupDebugMessenger();

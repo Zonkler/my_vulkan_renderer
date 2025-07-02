@@ -8,43 +8,57 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
-VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device,const VkCommandBuffer& cmd) : m_instance(Instance), m_DeviceObj(Device.device)
-{
-    auto result = SDL_Vulkan_CreateSurface(rData.window, Instance,&surface);
+
+int VulkanSwapchain::init(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device/*,const VkCommandBuffer& cmd*/){
+	m_instance = &Instance;
+	m_DeviceObj = &Device.device;
+
+	auto result = SDL_Vulkan_CreateSurface(rData.window, Instance, &surface);
     if (!result)
     {
-        Logger::log(0,"LOGGER::SWAPCHAIN:: SDL failed to create surface\n");
+        Logger::log(0,"[ERROR][Logger][Swapchain] SDL failed to create surface\n");
 
     }
-    auto index = getGraphicsQueueWithPresentationSupport(Device);
-	Device.graphicsQueueWithPresentIndex = index;
 
+    auto index = getGraphicsQueueWithPresentationSupport(Device);
+	
+	Device.graphicsQueueWithPresentIndex = index;
+	
     getSupportedFormats(Device);
     getSurfaceCapabilitiesAndPresentMode(Device,rData);
 	printCapabilities();
 	managePresentMode();
 	createSwapChainColorBufferImages(Device);
-	//createColorImageView(cmd,Device);
+	return 1;
+
 }
 
-VulkanSwapchain::~VulkanSwapchain()
-{
+void VulkanSwapchain::destroy(){
 
 	for (auto& buffer : colorBuffer) {
 		if (buffer.view != VK_NULL_HANDLE) {
-			vkDestroyImageView(m_DeviceObj, buffer.view, nullptr);
+			vkDestroyImageView(*m_DeviceObj, buffer.view, nullptr);
+			buffer.view = VK_NULL_HANDLE;
+
 		}
 	}
+	Logger::log(0,"[Logger][Swapchain] Destroyed Swapchain Images\n");
+
 
 	if (swapChain != VK_NULL_HANDLE) {
-    	vkDestroySwapchainKHR(m_DeviceObj, swapChain, nullptr);
+    	vkDestroySwapchainKHR(*m_DeviceObj, swapChain, nullptr);
+		swapChain = VK_NULL_HANDLE;
+
 	}
+	Logger::log(0,"[Logger][Swapchain] Destroyed Swapchain\n");
+
 
 	if (surface != VK_NULL_HANDLE) {
-    vkDestroySurfaceKHR(m_instance, surface, nullptr);
+		vkDestroySurfaceKHR(*m_instance, surface, nullptr);
+		surface = VK_NULL_HANDLE;
 	}
 
-    Logger::log(0,"LOGGER::SWAPCHAIN:: Destroyed surface\n");
+    Logger::log(0,"[Logger][Swapchain] Destroyed surface\n");
 
 }
 
@@ -96,9 +110,9 @@ uint32_t VulkanSwapchain::getGraphicsQueueWithPresentationSupport(const VulkanDe
     // Generate error if could not find both a graphics and a present queue
 	if (graphicsQueueNodeIndex == UINT32_MAX || presentQueueNodeIndex == UINT32_MAX) {
 		return  UINT32_MAX;
-        Logger::log(0,"LOGGER::SWAPCHAIN:: Could not find a graphics queue and a present queue\n");
+        Logger::log(0,"[ERROR][Logger][Swapchain] Could not find a graphics queue and a present queue\n");
 	}
-    Logger::log(0,"LOGGER::SWAPCHAIN:: Found a graphics queue and a present queue\n");
+    Logger::log(0,"[Logger][Swapchain] Found a graphics queue and a present queue\n");
 	return graphicsQueueNodeIndex;
 
 }
@@ -112,9 +126,9 @@ void  VulkanSwapchain::getSupportedFormats(const VulkanDevice& Device){
 	uint32_t formatCount;
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, NULL);
 	assert(result == VK_SUCCESS);
+
 	surfFormats.clear();
 	surfFormats.resize(formatCount);
-
 
     result = vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &formatCount, &surfFormats[0]);
 	assert(result == VK_SUCCESS);
@@ -130,24 +144,25 @@ void  VulkanSwapchain::getSupportedFormats(const VulkanDevice& Device){
 		assert(formatCount >= 1);
 		format = surfFormats[0].format;
 	}
-    std::cout<<"LOGGER::SWAPCHAIN:: Format: "<<format<<'\n';
-    //Logger::log(0,"LOGGER::SWAPCHAIN:: Format: ", format);
+    
+    Logger::log(0,"[Logger][Swapchain] Format: {}\n", static_cast<int>(format));
 	
 }
 
 void VulkanSwapchain::getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& device, const VulkanRenderData& rData){
+	
 	VkResult result;
-	const VkPhysicalDevice &GPU= device.gpu;
+	const VkPhysicalDevice &GPU = device.gpu;
 
 	result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(GPU,surface,&surfCapabilities);
-	//custom assert
+	assert(result == VK_SUCCESS);
 
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(GPU,surface,&presentModeCount,nullptr);
-	//custom assert
+	assert(result == VK_SUCCESS);
 
 	presentModes.clear();
 	presentModes.resize(presentModeCount);
-	//custom assert
+	
 
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(GPU, surface, &presentModeCount, presentModes.data());
 
@@ -167,7 +182,7 @@ void VulkanSwapchain::getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& d
 };
 
 void VulkanSwapchain::printCapabilities(){
-    Logger::log(0, "LOGGER::SWAPCHAIN Printing capabilities\n");
+    Logger::log(0, "[Logger][Swapchain] Printing capabilities\n");
 	
     std::cout << "\tCurrent extent: " << surfCapabilities.currentExtent.width 
               << "x" << surfCapabilities.currentExtent.height << '\n';
@@ -231,7 +246,7 @@ void VulkanSwapchain::printCapabilities(){
 }
 
 void VulkanSwapchain::managePresentMode(){
-		// If mailbox mode is available, use it, as is the lowest-latency non-
+	// If mailbox mode is available, use it, as is the lowest-latency non-
 	// tearing mode.  If not, try IMMEDIATE which will usually be available,
 	// and is fastest (though it tears).  If not, fall back to FIFO which is
 	// always available.
@@ -302,7 +317,7 @@ void VulkanSwapchain::createSwapChainColorBufferImages(const VulkanDevice& Devic
 
 	// Retrieve the swapchain image surfaces 
 	result = vkGetSwapchainImagesKHR(Device.device, swapChain, &swapchainImageCount, &swapchainImages[0]);
-	Logger::log(0,"LOGGER::SWAPCHAIN Swapchain created\n");
+	Logger::log(0,"[Logger][Swapchain] Swapchain created\n");
 
 }
 
@@ -342,11 +357,4 @@ void VulkanSwapchain::createColorImageView(const VkCommandBuffer& cmd,const Vulk
 	
 	currentColorBuffer = 0;
 
-
-
-
 }
-
-
-
-//TESTING

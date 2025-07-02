@@ -1,6 +1,8 @@
 #pragma once
-#include "engine/VulkanRenderdata.hpp"
+
 #include <vulkan/vulkan.h>
+
+#include "engine/VulkanRenderdata.hpp"
 
 class VulkanInstance
 {
@@ -9,12 +11,15 @@ private:
     VkInstanceCreateInfo instanceInfo{};
     VkInstance vulkanInstance;
 
-   
-
 public:
-    VulkanInstance(VulkanRenderData& rData);
-    ~VulkanInstance();
+    VulkanInstance() = default;
+    ~VulkanInstance()= default;
+    
+    int init(VulkanRenderData& rData);
+    void destroy();
+    
     VkInstance& Get_VKinstance();
+
 };
 
 
