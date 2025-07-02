@@ -8,6 +8,7 @@
 #include "engine/VulkanDebug.hpp"
 #include "engine/VulkanDevice.hpp"
 #include "engine/VulkanSwapchain.hpp"
+#include "engine/VulkanQueue.hpp"
 #include <SDL.h>
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT;
@@ -31,6 +32,7 @@ private:
     VulkanDebug             vkDebug;
     VulkanDevice            vkDevice;
     VulkanSwapchain         vkSwapchain;
+    VulkanQueue             m_vkQueue;
 
     bool running = false;
 
@@ -56,5 +58,8 @@ private:
 		VkDeviceMemory	mem;
 		VkImageView		view;
 	}Depth;
+
+    std::vector<VkCommandBuffer> m_cmdBuffers;
+
 
 };

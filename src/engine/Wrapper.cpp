@@ -1,7 +1,7 @@
 #include <vulkan/vulkan.h>
 #include "engine/Wrapper.hpp"
 #include <cassert>
-void CommandBufferMgr::allocCommandBuffer(const VkDevice* device, const VkCommandPool cmdPool, VkCommandBuffer* cmdBuf, const VkCommandBufferAllocateInfo* commandBufferInfo)
+void CommandBufferMgr::allocCommandBuffer(const VkDevice* device, const VkCommandPool cmdPool, VkCommandBuffer* cmdBuf, const VkCommandBufferAllocateInfo* commandBufferInfo,uint32_t count)
 {
 	// Dependency on the intialize SwapChain Extensions and initialize CommandPool
 	VkResult result;
@@ -20,7 +20,8 @@ void CommandBufferMgr::allocCommandBuffer(const VkDevice* device, const VkComman
 	cmdInfo.pNext		= NULL;
 	cmdInfo.commandPool = cmdPool;
 	cmdInfo.level		= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdInfo.commandBufferCount = 1;
+	cmdInfo.commandBufferCount = count;
+	
 
 	result = vkAllocateCommandBuffers(*device, &cmdInfo, cmdBuf);
 	assert(!result);
@@ -100,3 +101,4 @@ void CommandBufferMgr::submitCommandBuffer(const VkQueue& queue, const VkCommand
 	assert(!result);
 
 }
+

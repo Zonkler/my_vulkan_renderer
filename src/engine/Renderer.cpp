@@ -47,7 +47,60 @@ bool Renderer::init(){
     createCommandPool();
     createDepthImage();
     buildSwapChainAndDepthImage();
+
+	m_vkQueue.init(vkDevice.device,vkSwapchain.swapChain,vkSwapchain.getGraphicsQueueWithPresentationSupport(vkDevice),0);
+
+
+	m_cmdBuffers.resize(vkSwapchain.swapchainImageCount);
+	std::cout<<m_cmdBuffers.size()<<"\n";
+
+	CommandBufferMgr::allocCommandBuffer(&vkDevice.device,cmdPool,m_cmdBuffers.data(),nullptr,m_cmdBuffers.size());
 	
+	VkClearColorValue ClearValue = {0.3f,0.3f,0.3f,0.3f};
+
+		VkImageSubresourceRange ImageRange = {
+			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		};
+
+
+for (size_t i = 0; i < m_cmdBuffers.size(); i++)
+{
+	CommandBufferMgr::beginCommandBuffer(m_cmdBuffers[i],nullptr);
+
+	setImageLayout(
+    vkSwapchain.swapchainImages[i],
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    VK_IMAGE_LAYOUT_UNDEFINED,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    VK_ACCESS_NONE, // or VK_ACCESS_TRANSFER_WRITE_BIT if unclear
+    m_cmdBuffers[i]
+	);
+
+	vkCmdClearColorImage(
+		m_cmdBuffers[i],
+		vkSwapchain.swapchainImages[i],
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		&ClearValue,
+		1,
+		&ImageRange);
+
+	setImageLayout(
+    vkSwapchain.swapchainImages[i],
+    VK_IMAGE_ASPECT_COLOR_BIT,
+    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    VK_ACCESS_TRANSFER_WRITE_BIT,
+    m_cmdBuffers[i]
+	);
+
+
+	CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
+}
+	std::cout<<"Allocated memory\n";
 
 
     return true;
@@ -63,8 +116,23 @@ void Renderer::processEvents() {
 }
 
 void Renderer::renderFrame() {
-    // TODO: Add your rendering code here
-    // For now, just delay for ~16 ms to simulate ~60 FPS
+	//std::cout<<"starting render frame\n";
+
+	uint32_t ImageIndex = m_vkQueue.acquireNextImage();
+
+	//std::cout<<"got index next image\n";
+
+
+	m_vkQueue.submitAsync(m_cmdBuffers[ImageIndex]);
+
+	//std::cout<<"submitted cmd buffer\n";
+
+
+	m_vkQueue.present(ImageIndex);
+
+		//std::cout<<"submitted cmd buffer to present\n";
+
+
     SDL_Delay(16);
 }
 
@@ -124,76 +192,117 @@ void Renderer::destroyCommandBuffer()
 	vkFreeCommandBuffers(vkDevice.device, cmdPool, sizeof(cmdBufs)/sizeof(VkCommandBuffer), cmdBufs);
 }
 
-void Renderer::setImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkAccessFlagBits srcAccessMask, const VkCommandBuffer& cmd)
+void Renderer::setImageLayout(
+    VkImage image,
+    VkImageAspectFlags aspectMask,
+    VkImageLayout oldImageLayout,
+    VkImageLayout newImageLayout,
+    VkAccessFlagBits srcAccessMask,
+    const VkCommandBuffer& cmd)
 {
-	// Dependency on cmd
-	assert(cmd != VK_NULL_HANDLE);
-	
-	// The deviceObj->queue must be initialized
-	assert(vkDevice.queue != VK_NULL_HANDLE);
+    assert(cmd != VK_NULL_HANDLE);
 
-	VkImageMemoryBarrier imgMemoryBarrier = {};
-	imgMemoryBarrier.sType			= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imgMemoryBarrier.pNext			= NULL;
-	imgMemoryBarrier.srcAccessMask	= srcAccessMask;
-	imgMemoryBarrier.dstAccessMask	= 0;
-	imgMemoryBarrier.oldLayout		= oldImageLayout;
-	imgMemoryBarrier.newLayout		= newImageLayout;
-	imgMemoryBarrier.image			= image;
-	imgMemoryBarrier.subresourceRange.aspectMask	= aspectMask;
-	imgMemoryBarrier.subresourceRange.baseMipLevel	= 0;
-	imgMemoryBarrier.subresourceRange.levelCount	= 1;
-	imgMemoryBarrier.subresourceRange.layerCount	= 1;
+    VkImageMemoryBarrier imgMemoryBarrier = {};
+    imgMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imgMemoryBarrier.pNext = NULL;
+    imgMemoryBarrier.srcAccessMask = srcAccessMask;
+    imgMemoryBarrier.dstAccessMask = 0;
+    imgMemoryBarrier.oldLayout = oldImageLayout;
+    imgMemoryBarrier.newLayout = newImageLayout;
+    imgMemoryBarrier.image = image;
+    imgMemoryBarrier.subresourceRange.aspectMask = aspectMask;
+    imgMemoryBarrier.subresourceRange.baseMipLevel = 0;
+    imgMemoryBarrier.subresourceRange.levelCount = 1;
+    imgMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+    imgMemoryBarrier.subresourceRange.layerCount = 1;
 
-	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-		imgMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	}
+    if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        imgMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
 
-	switch (newImageLayout)
-	{
-	// Ensure that anything that was copying from this image has completed
-	// An image in this layout can only be used as the destination operand of the commands
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-	case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-		imgMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		break;
-
-	// Ensure any Copy or CPU writes to image are flushed
-	// An image in this layout can only be used as a read-only shader resource
-	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imgMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		break;
-
-	// An image in this layout can only be used as a framebuffer color attachment
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		imgMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-		break;
-
-	// An image in this layout can only be used as a framebuffer depth/stencil attachment
-	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-		imgMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		break;
-	}
-
-	VkPipelineStageFlags srcStages	= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-        
-    switch (newImageLayout) {
-        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-            destStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    switch (newImageLayout)
+    {
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+            imgMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             break;
+
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            // No access mask needed for presenting images
+            imgMemoryBarrier.dstAccessMask = 0;
+            break;
+
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imgMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            break;
+
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            imgMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            break;
+
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            imgMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+
+        default:
+            // Add other cases if needed
+            break;
+    }
+
+    VkPipelineStageFlags srcStages = 0;
+    VkPipelineStageFlags destStages = 0;
+
+    switch (oldImageLayout) {
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+            srcStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            srcStages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            srcStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            break;
+        default:
+            srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            break;
+    }
+
+    switch (newImageLayout) {
         case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
             destStages = VK_PIPELINE_STAGE_TRANSFER_BIT;
             break;
         case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
             destStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             break;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            destStages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            destStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            destStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            break;
+        default:
+            destStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            break;
     }
 
-	vkCmdPipelineBarrier(cmd, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+    vkCmdPipelineBarrier(
+        cmd,
+        srcStages,
+        destStages,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imgMemoryBarrier
+    );
 }
+
+
 
 void Renderer::createDepthImage()
 {
@@ -287,7 +396,7 @@ void Renderer::createDepthImage()
 
 	// Use command buffer to create the depth image. This includes -
 	// Command buffer allocation, recording with begin/end scope and submission.
-	CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, &cmdDepthImage);
+	CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, &cmdDepthImage,nullptr,1);
 	CommandBufferMgr::beginCommandBuffer(cmdDepthImage);
 	{
 		// Set the image layout to depth stencil optimal
@@ -321,4 +430,6 @@ void Renderer::destroyDepthBuffer(){
 
 
 }
+
+
 
