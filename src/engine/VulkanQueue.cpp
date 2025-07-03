@@ -5,31 +5,30 @@
 #include "tools/tools.hpp"
 
 #include <cassert>
-void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex){
+void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount){
     m_device    = &Device;
     m_swapChain = swapchain;
 
     vkGetDeviceQueue(Device,queueFamily,queueIndex,&m_queue);
 
     Logger::log(0,"[Logger][Vulkan Queue] Queue acquired \n");
+    imagesInFlight.resize(swapchainImageCount, VK_NULL_HANDLE);
 
     createSemaphores();
+
+    imageSemaphoreOwner.resize(imagesInFlight.size(), SIZE_MAX);
 }
 
 void VulkanQueue::createSemaphores(){
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkSemaphoreCreateInfo semInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+        vkCreateSemaphore(*m_device, &semInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(*m_device, &semInfo, nullptr, &renderFinishedSemaphores[i]);
 
-    
-
-    VkSemaphoreCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    createInfo.pNext = nullptr;
-    createInfo.flags = 0;
-
-VkResult res1 = vkCreateSemaphore(*m_device, &createInfo, nullptr, &m_renderCompleteSem);
-VkResult res2 = vkCreateSemaphore(*m_device, &createInfo, nullptr, &m_presentCompleteSem);
-
-assert(res1 == VK_SUCCESS && "Failed to create renderCompleteSem");
-assert(res2 == VK_SUCCESS && "Failed to create presentCompleteSem");
+        VkFenceCreateInfo fenceInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start signaled so first frame doesn't block
+        vkCreateFence(*m_device, &fenceInfo, nullptr, &inFlightFences[i]);
+    }
 
 }
 
@@ -39,41 +38,47 @@ void VulkanQueue::waitIdle(){
 
 }
 
-uint32_t VulkanQueue::acquireNextImage(){
-if (m_swapChain == VK_NULL_HANDLE) {
-	std::cerr << "[FATAL] Swapchain handle is NULL!\n";
-	assert(false);
-}
-
+uint32_t VulkanQueue::acquireNextImage() {
     uint32_t imageIndex = 0;
-    VkResult res = vkAcquireNextImageKHR(*m_device,m_swapChain,UINT64_MAX,m_presentCompleteSem,nullptr,&imageIndex);
-    if (res != VK_SUCCESS) {
-	std::cerr << "[FATAL] vkAcquireNextImageKHR failed with error code: " << res << "\n";
-	assert(false); // or return false from renderFrame
-}
+    VkResult res = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX,
+                                         imageAvailableSemaphores[currentFrame],
+                                         VK_NULL_HANDLE, &imageIndex);
+    assert(res == VK_SUCCESS);
+
+    // Wait for the fence of the image (if in use)
+    if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(*m_device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+    // 🛑 Wait for the semaphore used by the previous frame that rendered to this image
+    if (imageSemaphoreOwner[imageIndex] != SIZE_MAX &&
+        imageSemaphoreOwner[imageIndex] != currentFrame) {
+        // This semaphore was used in present and hasn't been reacquired since
+        // So wait on its corresponding fence
+        vkWaitForFences(*m_device, 1, &inFlightFences[imageSemaphoreOwner[imageIndex]], VK_TRUE, UINT64_MAX);
+    }
+
+    // 🔁 Track usage
+    imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+    imageSemaphoreOwner[imageIndex] = currentFrame;
+
     return imageIndex;
 }
 
-void VulkanQueue::submitAsync(VkCommandBuffer& cmdBuf){
 
-    VkPipelineStageFlags waitFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+void VulkanQueue::submitAsync(VkCommandBuffer& cmdBuf) {
+    VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkSubmitInfo submitInfo{};
-
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.pNext = nullptr;
+    VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &m_presentCompleteSem;
-    submitInfo.pWaitDstStageMask = &waitFlags;
+    submitInfo.pWaitSemaphores = &imageAvailableSemaphores[currentFrame];
+    submitInfo.pWaitDstStageMask = &waitStages;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &cmdBuf;
-    submitInfo.signalSemaphoreCount =1;
-    submitInfo.pSignalSemaphores = &m_renderCompleteSem;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
 
-    VkResult res = vkQueueSubmit(m_queue,1,&submitInfo,nullptr);
-
-
-
+    vkQueueSubmit(m_queue, 1, &submitInfo, inFlightFences[currentFrame]);
 }
 
 void VulkanQueue::submitSync(VkCommandBuffer& cmdBuf){
@@ -98,18 +103,20 @@ void VulkanQueue::submitSync(VkCommandBuffer& cmdBuf){
 
 }
 
-void VulkanQueue::present(uint32_t imageIndex){
+void VulkanQueue::present(uint32_t imageIndex) {
+    VkPresentInfoKHR presentInfo{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderFinishedSemaphores[currentFrame];
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &m_swapChain;
+    presentInfo.pImageIndices = &imageIndex;
 
-    VkPresentInfoKHR PresentInfo{};
-    PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    PresentInfo.pNext = nullptr;
-    PresentInfo.waitSemaphoreCount= 1;
-    PresentInfo.pWaitSemaphores = &m_renderCompleteSem;
-    PresentInfo.swapchainCount = 1;
-    PresentInfo.pSwapchains = &m_swapChain;
-    PresentInfo.pImageIndices = &imageIndex;
+    vkQueuePresentKHR(m_queue, &presentInfo);
 
-    vkQueuePresentKHR(m_queue,&PresentInfo);
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
 
-
+void VulkanQueue::waitForCurrentFrameFence() {
+    vkWaitForFences(*m_device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(*m_device, 1, &inFlightFences[currentFrame]);
 }

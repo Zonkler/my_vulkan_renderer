@@ -43,6 +43,16 @@ public:
     	// Current drawing surface index in use
 	uint32_t currentColorBuffer;
 
+    struct FrameSyncObjects {
+        VkSemaphore imageAvailableSemaphore;
+        VkSemaphore renderFinishedSemaphore;
+        VkFence inFlightFence;
+    };
+    
+    std::vector<FrameSyncObjects> frameSyncObjects;
+    uint32_t currentFrame = 0;
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+
 
     uint32_t getGraphicsQueueWithPresentationSupport(const VulkanDevice& Device);
 
@@ -61,5 +71,4 @@ public:
     void createColorImageView(const VkCommandBuffer& cmd,const VulkanDevice& Device);
 
 };
-
 

@@ -43,12 +43,12 @@ bool Renderer::init(){
 	}
 
 	vkSwapchain.init(renderData, vkInstance.Get_VKinstance(), vkDevice /*, cmdDepthImage*/);
-
+	
     createCommandPool();
     createDepthImage();
     buildSwapChainAndDepthImage();
 
-	m_vkQueue.init(vkDevice.device,vkSwapchain.swapChain,vkSwapchain.getGraphicsQueueWithPresentationSupport(vkDevice),0);
+	m_vkQueue.init(vkDevice.device,vkSwapchain.swapChain,vkSwapchain.getGraphicsQueueWithPresentationSupport(vkDevice),0,vkSwapchain.swapchainImageCount);
 
 
 	m_cmdBuffers.resize(vkSwapchain.swapchainImageCount);
@@ -116,24 +116,19 @@ void Renderer::processEvents() {
 }
 
 void Renderer::renderFrame() {
-	//std::cout<<"starting render frame\n";
+    m_vkQueue.waitForCurrentFrameFence();
 
-	uint32_t ImageIndex = m_vkQueue.acquireNextImage();
+	//m_vkQueue.waitForCurrentFrameFence();
 
-	//std::cout<<"got index next image\n";
+    uint32_t imageIndex = m_vkQueue.acquireNextImage();
 
+    // Re-record or reuse command buffer here if necessary
 
-	m_vkQueue.submitAsync(m_cmdBuffers[ImageIndex]);
+    m_vkQueue.submitAsync(m_cmdBuffers[imageIndex]);
 
-	//std::cout<<"submitted cmd buffer\n";
+    m_vkQueue.present(imageIndex);
 
-
-	m_vkQueue.present(ImageIndex);
-
-		//std::cout<<"submitted cmd buffer to present\n";
-
-
-    SDL_Delay(16);
+    SDL_Delay(16); // simulate vsync
 }
 
 void Renderer::run() {
