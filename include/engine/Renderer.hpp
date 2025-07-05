@@ -46,7 +46,9 @@ private:
 
     VkCommandPool		cmdPool;
 	VkCommandBuffer		cmdDepthImage;	// Command buffer for depth image layout
+    VmaAllocator        allocator;
 
+    
 	void destroyCommandBuffer();
 	void destroyCommandPool();
 	void destroyDepthBuffer();
@@ -57,6 +59,7 @@ private:
 		VkImage			image;
 		VkDeviceMemory	mem;
 		VkImageView		view;
+        VmaAllocation   allocation;
 	}Depth;
 
     std::vector<VkCommandBuffer> m_cmdBuffers;

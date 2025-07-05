@@ -6,70 +6,80 @@
 
 #include "engine/VulkanDevice.hpp"
 
-int VulkanDevice::init(VkInstance& VKinst,std::vector<const char*> DeviceExtensions){
+int VulkanDevice::init(VkInstance &VKinst, std::vector<const char *> DeviceExtensions)
+{
 
-    if(enumeratePhysicalDevices(VKinst) != VK_SUCCESS) return 0;
+    if (enumeratePhysicalDevices(VKinst) != VK_SUCCESS)
+        return 0;
     getPhysicalDeviceQueuesAndProperties();
-    if(getGraphicsQueueHandle()) return 0;
+    if (getGraphicsQueueHandle())
+        return 0;
     createDevice(DeviceExtensions);
     getDeviceQueue();
-    Logger::log(0,"[Logger][Device] Logical device created\n");
-    
+    Logger::log(0, "[Logger][Device] Logical device created\n");
+
+    initializeVMA(VKinst);
+
     return 1;
 }
 
-void VulkanDevice::destroy(){
+void VulkanDevice::destroy()
+{
 
-    vkDestroyDevice(device,nullptr);
-    Logger::log(0,"[Logger][Device] Logical device destroyed\n");
+    vmaDestroyAllocator(allocator);
+    Logger::log(0, "[Logger][Device] VMA destroyed\n");
 
+    vkDestroyDevice(device, nullptr);
+    Logger::log(0, "[Logger][Device] Logical device destroyed\n");
 }
 
-VkResult VulkanDevice::enumeratePhysicalDevices(VkInstance& VKinst){
+VkResult VulkanDevice::enumeratePhysicalDevices(VkInstance &VKinst)
+{
 
     VkResult Result = VK_SUCCESS;
-    
-    //obtain total amount of physical devices available to the system
-    uint32_t physicalDeviceCount{0};
-    Result = vkEnumeratePhysicalDevices(VKinst,&physicalDeviceCount,nullptr);
 
-    if (Result != VK_SUCCESS || physicalDeviceCount == 0) {
+    // obtain total amount of physical devices available to the system
+    uint32_t physicalDeviceCount{0};
+    Result = vkEnumeratePhysicalDevices(VKinst, &physicalDeviceCount, nullptr);
+
+    if (Result != VK_SUCCESS || physicalDeviceCount == 0)
+    {
         Logger::log(1, "[ERROR][Logger][Device] No physical devices found or vkEnumerate failed\n");
         return Result;
     }
 
     physicalDevices.resize(physicalDeviceCount);
 
-    Result = vkEnumeratePhysicalDevices(VKinst,&physicalDeviceCount,&physicalDevices[0]);
+    Result = vkEnumeratePhysicalDevices(VKinst, &physicalDeviceCount, &physicalDevices[0]);
     assert(Result == VK_SUCCESS);
 
     // TODO: rank physical devices based on their properties and pick the bes one
-    //VkPhysicalDeviceProperties physicalDeviceProp;
-    //vkGetPhysicalDeviceProperties(physicalDevices[0],&physicalDeviceProp);
+    // VkPhysicalDeviceProperties physicalDeviceProp;
+    // vkGetPhysicalDeviceProperties(physicalDevices[0],&physicalDeviceProp);
 
-    //pick the first
+    // pick the first
     gpu = physicalDevices[0];
-    
-    Logger::log(0,"[Logger][Device] Physical device picked\n");
+
+    Logger::log(0, "[Logger][Device] Physical device picked\n");
 
     return Result;
 }
 
-void VulkanDevice::getPhysicalDeviceQueuesAndProperties(){
+void VulkanDevice::getPhysicalDeviceQueuesAndProperties()
+{
 
     // Query queue families count with pass NULL as second parameter.
-	vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, NULL);
-	
-	// Allocate space to accomodate Queue properties.
-	queueFamilyProps.resize(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, NULL);
 
-	// Get queue family properties
-	vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, queueFamilyProps.data());
+    // Allocate space to accomodate Queue properties.
+    queueFamilyProps.resize(queueFamilyCount);
 
-
+    // Get queue family properties
+    vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, queueFamilyProps.data());
 }
 
-uint32_t VulkanDevice::getGraphicsQueueHandle(){
+uint32_t VulkanDevice::getGraphicsQueueHandle()
+{
 
     bool found = false;
 
@@ -80,26 +90,21 @@ uint32_t VulkanDevice::getGraphicsQueueHandle(){
             found = true;
             graphicsQueueFamilyIndex = i;
             break;
-
         }
-        
     }
 
     if (found)
     {
-        Logger::log(0,"[Logger][Device] Graphics queue located\n");
+        Logger::log(0, "[Logger][Device] Graphics queue located\n");
         return 0;
     }
 
-
-
-    Logger::log(0,"[Logger][Device] Graphics queue could not belocated\n");
+    Logger::log(0, "[Logger][Device] Graphics queue could not belocated\n");
     return 1;
-    
-
 }
 
-void VulkanDevice::createDevice(std::vector<const char*> DeviceExtensions){
+void VulkanDevice::createDevice(std::vector<const char *> DeviceExtensions)
+{
 
     VkResult result = VK_SUCCESS;
     float queuePriority = 0.0;
@@ -112,7 +117,7 @@ void VulkanDevice::createDevice(std::vector<const char*> DeviceExtensions){
     queueInfo.queueCount = 1;
     queueInfo.pQueuePriorities = &queuePriority;
 
-    //create the device information
+    // create the device information
     VkDeviceCreateInfo deviceInfo{};
     deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceInfo.pNext = NULL;
@@ -123,31 +128,44 @@ void VulkanDevice::createDevice(std::vector<const char*> DeviceExtensions){
     deviceInfo.enabledExtensionCount = DeviceExtensions.size();
     deviceInfo.ppEnabledExtensionNames = DeviceExtensions.data();
     deviceInfo.pEnabledFeatures = NULL;
-    
-    //create the device itself
+
+    // create the device itself
     result = vkCreateDevice(gpu, &deviceInfo, NULL, &device);
     assert(result == VK_SUCCESS);
-
-
 }
 
-void VulkanDevice::getDeviceQueue(){
-    vkGetDeviceQueue(device,graphicsQueueFamilyIndex,0,&queue);
+void VulkanDevice::getDeviceQueue()
+{
+    vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &queue);
 };
 
 bool VulkanDevice::memoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex)
 {
-	// Search memtypes to find first index with those properties
-	for (uint32_t i = 0; i < 32; i++) {
-		if ((typeBits & 1) == 1) {
-			// Type is available, does it match user properties?
-			if ((memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask) {
-				*typeIndex = i;
-				return true;
-			}
-		}
-		typeBits >>= 1;
-	}
-	// No memory types matched, return failure
-	return false;
+    // Search memtypes to find first index with those properties
+    for (uint32_t i = 0; i < 32; i++)
+    {
+        if ((typeBits & 1) == 1)
+        {
+            // Type is available, does it match user properties?
+            if ((memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
+            {
+                *typeIndex = i;
+                return true;
+            }
+        }
+        typeBits >>= 1;
+    }
+    // No memory types matched, return failure
+    return false;
+}
+
+void VulkanDevice::initializeVMA(VkInstance &VKinst)
+{
+
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.physicalDevice = gpu;
+    allocatorInfo.device = device;
+    allocatorInfo.instance = VKinst;
+    vmaCreateAllocator(&allocatorInfo, &allocator);
+    Logger::log(0, "[Logger][Device] VMA initialized\n");
 }

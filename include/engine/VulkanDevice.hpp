@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <vma/vk_mem_alloc.h>
+
 class VulkanDevice
 {
 public:
@@ -19,6 +21,9 @@ public:
     void getDeviceQueue();
     
     bool memoryTypeFromProperties(uint32_t typeBits, VkFlags requirementsMask, uint32_t *typeIndex);
+
+    VmaAllocator getAllocator() const { return allocator; }
+
 
     // Device related member variables
     VkDevice                         device;            // Logical device
@@ -38,6 +43,9 @@ public:
 
 private:
 
+    VmaAllocator allocator;
+
+    void initializeVMA(VkInstance& VKinst);
     VkResult enumeratePhysicalDevices(VkInstance& VKinst); 
     void createDevice(std::vector<const char*> DeviceExtensions);
 

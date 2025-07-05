@@ -19,11 +19,11 @@ private:
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
     size_t currentFrame = 0;
 
-    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
-    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> renderFinishedSemaphores;
-    std::array<VkFence, MAX_FRAMES_IN_FLIGHT> inFlightFences;
-    std::vector<VkFence>     imagesInFlight;
-    std::vector<size_t> imageSemaphoreOwner;
+    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT>   imageAvailableSemaphores;
+    std::vector<VkSemaphore>                        renderFinishedSemaphores;
+    std::array<VkFence, MAX_FRAMES_IN_FLIGHT>       inFlightFences;
+    std::vector<VkFence>                            imagesInFlight;
+    std::vector<size_t>                             imageSemaphoreOwner;
 
 public: 
     VulkanQueue() = default;
@@ -32,7 +32,7 @@ public:
     void init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount);
     void destroy();
     uint32_t acquireNextImage();
-    void submitAsync(VkCommandBuffer& cmdBuf);
+    void submitAsync(VkCommandBuffer& cmdBuf,uint32_t imageIndex);
     void submitSync(VkCommandBuffer& cmdBuf);
     void present(uint32_t imageIndex);
     void waitIdle();
