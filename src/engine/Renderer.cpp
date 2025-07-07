@@ -68,46 +68,52 @@ bool Renderer::init()
 	m_vkQueue.init(vkDevice.device, vkSwapchain.swapChain, vkSwapchain.getGraphicsQueueWithPresentationSupport(vkDevice), 0, vkSwapchain.swapchainImageCount);
 
 	m_cmdBuffers.resize(vkSwapchain.swapchainImageCount);
+	
+	m_renderPass = createSimpleRenderPass(vkSwapchain.format);
+	m_frameBuffers = createFrameBuffers(m_renderPass);
 
 	CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
 
-	VkClearColorValue ClearValue = {0.3f, 0.3f, 0.3f, 0.3f};
+	VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
+	VkClearValue clearValue;
+	clearValue.color = Clearcolor;
 
 	VkImageSubresourceRange ImageRange = {
 		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 		.baseMipLevel = 0,
 		.levelCount = 1,
 		.baseArrayLayer = 0,
-		.layerCount = 1};
+		.layerCount = 1
+	};
+	
+	VkRenderPassBeginInfo RenderPassBeginInfo{
+		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+		.pNext = nullptr,
+		.renderPass = m_renderPass,
+		.renderArea = {
+			.offset = {
+				.x=0,
+				.y=0
+			},
+			.extent = {
+				.width = static_cast<uint32_t>(renderData.rdWidth),
+				.height = static_cast<uint32_t>(renderData.rdHeight)
+			}
+		},
+		.clearValueCount =1,
+		.pClearValues = &clearValue
+	};
 
+	
 	for (size_t i = 0; i < m_cmdBuffers.size(); i++)
 	{
 		CommandBufferMgr::beginCommandBuffer(m_cmdBuffers[i], nullptr);
 
-		setImageLayout(
-			vkSwapchain.swapchainImages[i],
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_ACCESS_NONE, // or VK_ACCESS_TRANSFER_WRITE_BIT if unclear
-			m_cmdBuffers[i]);
+		RenderPassBeginInfo.framebuffer = m_frameBuffers[i];
+		
+		vkCmdBeginRenderPass(m_cmdBuffers[i],&RenderPassBeginInfo,VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdClearColorImage(
-			m_cmdBuffers[i],
-			vkSwapchain.swapchainImages[i],
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			&ClearValue,
-			1,
-			&ImageRange);
-
-		setImageLayout(
-			vkSwapchain.swapchainImages[i],
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-			VK_ACCESS_TRANSFER_WRITE_BIT,
-			m_cmdBuffers[i]);
-
+		vkCmdEndRenderPass(m_cmdBuffers[i]);
 		CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
 	}
 
@@ -415,4 +421,71 @@ void Renderer::destroyDepthBuffer()
     vmaDestroyImage(allocator, Depth.image, Depth.allocation);
 
     Logger::log(0, "[Logger][Renderer] Depth Buffer destroyed (VMA)\n");
+}
+
+
+VkRenderPass Renderer::createSimpleRenderPass(VkFormat format) {
+    VkAttachmentDescription attachDesc = {
+        .flags = 0,
+        .format = format,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    };
+
+    VkAttachmentReference attachRef = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL  // ✅ FIXED
+    };
+
+    VkSubpassDescription subpassDesc = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &attachRef
+    };
+
+    VkRenderPassCreateInfo renderPassCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments = &attachDesc,
+        .subpassCount = 1,
+        .pSubpasses = &subpassDesc
+    };
+
+    VkRenderPass renderPass;
+    VkResult res = vkCreateRenderPass(vkDevice.device, &renderPassCreateInfo, nullptr, &renderPass);
+    if (res != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create render pass!");
+    }
+
+    std::cout << "Created simple render pass\n";
+    return renderPass;
+}
+
+std::vector<VkFramebuffer> Renderer::createFrameBuffers(VkRenderPass renderPass){
+
+	m_frameBuffers.resize(vkSwapchain.swapchainImageCount);
+
+	for (size_t i = 0; i < m_frameBuffers.size(); i++)
+	{
+		VkFramebufferCreateInfo fbCreateInfo{};
+
+		fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		fbCreateInfo.renderPass = renderPass;
+		fbCreateInfo.attachmentCount = 1;
+		fbCreateInfo.pAttachments = &vkSwapchain.colorBuffer[i].view;
+		fbCreateInfo.width = renderData.rdWidth;
+		fbCreateInfo.height = renderData.rdHeight;
+		fbCreateInfo.layers = 1;
+
+		vkCreateFramebuffer(vkDevice.device,&fbCreateInfo,nullptr,&m_frameBuffers[i]);
+
+	}
+	
+	return m_frameBuffers;
+
 }

@@ -10,3 +10,4 @@ public:
 	static void endCommandBuffer(VkCommandBuffer cmdBuf);
 	static void submitCommandBuffer(const VkQueue& queue, const VkCommandBuffer* cmdBufList, const VkSubmitInfo* submitInfo = NULL, const VkFence& fence = VK_NULL_HANDLE);
 };
+

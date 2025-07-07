@@ -63,6 +63,10 @@ private:
 	}Depth;
 
     std::vector<VkCommandBuffer> m_cmdBuffers;
-
+    std::vector<VkFramebuffer> m_frameBuffers;
+    VkRenderPass m_renderPass;
+    
+    VkRenderPass createSimpleRenderPass(VkFormat format);
+    std::vector<VkFramebuffer> createFrameBuffers(VkRenderPass);
 
 };
