@@ -2,6 +2,7 @@
 #pragma once
 
 #include "window/window.hpp"
+#include <memory>
 #include "engine/VulkanRenderdata.hpp"
 #include "engine/VulkanLayerAndExtension.hpp"
 #include "engine/VulkanInstance.hpp"
@@ -9,6 +10,8 @@
 #include "engine/VulkanDevice.hpp"
 #include "engine/VulkanSwapchain.hpp"
 #include "engine/VulkanQueue.hpp"
+#include "engine/Shader.hpp"
+#include "engine/VulkanGFXPipeline.hpp"
 #include <SDL.h>
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT;
@@ -33,6 +36,7 @@ private:
     VulkanDevice            vkDevice;
     VulkanSwapchain         vkSwapchain;
     VulkanQueue             m_vkQueue;
+    VulkanGFXPipeline       m_GFXPipeline;
 
     bool running = false;
 
@@ -65,6 +69,9 @@ private:
     std::vector<VkCommandBuffer> m_cmdBuffers;
     std::vector<VkFramebuffer> m_frameBuffers;
     VkRenderPass m_renderPass;
+
+
+    std::vector<std::unique_ptr<Shader>> ShaderModules;
     
     VkRenderPass createSimpleRenderPass(VkFormat format);
     std::vector<VkFramebuffer> createFrameBuffers(VkRenderPass);

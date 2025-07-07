@@ -10,8 +10,8 @@
 #include <vma/vk_mem_alloc.h>
 
 #include "engine/Wrapper.hpp"
-
-
+#include "engine/Shader.hpp"
+#include "engine/VulkanGFXPipeline.hpp"
 Renderer::Renderer(VulkanRenderData &rData) : renderData(rData)
 {
 	// Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
@@ -72,6 +72,7 @@ bool Renderer::init()
 	m_renderPass = createSimpleRenderPass(vkSwapchain.format);
 	m_frameBuffers = createFrameBuffers(m_renderPass);
 
+
 	CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
 
 	VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
@@ -104,6 +105,10 @@ bool Renderer::init()
 		.pClearValues = &clearValue
 	};
 
+	ShaderModules.emplace_back(std::make_unique<Shader>(&vkDevice.device,VK_SHADER_STAGE_VERTEX_BIT,"skibidi","../shaders/main.vert.spv"));
+	ShaderModules.emplace_back(std::make_unique<Shader>(&vkDevice.device,VK_SHADER_STAGE_FRAGMENT_BIT,"skibidi2","../shaders/main.frag.spv"));
+	
+	m_GFXPipeline.init(vkDevice.device,renderData,m_renderPass,ShaderModules);
 	
 	for (size_t i = 0; i < m_cmdBuffers.size(); i++)
 	{
@@ -113,9 +118,19 @@ bool Renderer::init()
 		
 		vkCmdBeginRenderPass(m_cmdBuffers[i],&RenderPassBeginInfo,VK_SUBPASS_CONTENTS_INLINE);
 
+		m_GFXPipeline.bind(m_cmdBuffers[i]);
+
+		uint32_t vertexcount{3};
+		uint32_t instancecount{1};
+		uint32_t firstvertex{0};
+		uint32_t firstinstance{0};
+
+		vkCmdDraw(m_cmdBuffers[i],vertexcount,instancecount,firstvertex,firstinstance);
+
 		vkCmdEndRenderPass(m_cmdBuffers[i]);
 		CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
 	}
+
 
 	return true;
 }
@@ -142,8 +157,6 @@ void Renderer::renderFrame()
 	m_vkQueue.submitAsync(m_cmdBuffers[imageIndex], imageIndex);
 
 	m_vkQueue.present(imageIndex);
-
-	SDL_Delay(16);
 	
 }
 
@@ -169,10 +182,21 @@ void Renderer::cleanup()
 	destroyCommandBuffer();
 	destroyCommandPool();
 
+	vkDestroyRenderPass(vkDevice.device,m_renderPass,nullptr);
+	
+	for (size_t i = 0; i < m_frameBuffers.size(); i++)
+	{
+		vkDestroyFramebuffer(vkDevice.device,m_frameBuffers[i],nullptr);
+	}
+	
+	ShaderModules.clear();
+	
 	vkDevice.destroy();
 	vkDebug.destroy();
 	vkInstance.destroy();
 	myWindow.destroy();
+
+	
 }
 
 void Renderer::createCommandPool()

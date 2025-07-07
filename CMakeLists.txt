@@ -39,6 +39,17 @@ target_link_libraries(vulkan_guide PUBLIC
     vma glm Vulkan::Vulkan fmt::fmt stb_image SDL2::SDL2 vkbootstrap imgui
 )
 
+# Static link libgcc and libstdc++ to avoid runtime DLL issues with MinGW
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(vulkan_guide PRIVATE -static-libgcc -static-libstdc++)
+    if (CMAKE_VERSION VERSION_LESS "3.13")
+        # For older CMake, append to linker flags globally
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    else()
+        target_link_options(vulkan_guide PRIVATE -static-libgcc -static-libstdc++)
+    endif()
+endif()
+
 target_precompile_headers(vulkan_guide PUBLIC 
     <optional> <vector> <memory> <string> <unordered_map>
     <glm/mat4x4.hpp> <glm/vec4.hpp> <vulkan/vulkan.h>
