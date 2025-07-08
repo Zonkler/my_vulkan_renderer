@@ -5,6 +5,7 @@
 #include "tools/tools.hpp"
 
 #include <cassert>
+
 void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount){
     m_device    = &Device;
     m_swapChain = swapchain;

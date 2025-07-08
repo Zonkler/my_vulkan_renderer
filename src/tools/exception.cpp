@@ -3,7 +3,7 @@
 #include <string>
 VulkanException::VulkanException(std::string message, const VkResult result)
     : MagmaException(message.append(" (")
-                          .append(as_string(result))
+                          .append(vkutils::as_string(result))
                           .append(": ")
-                          .append(result_to_description(result))
+                          .append(vkutils::result_to_description(result))
                           .append(")")) {}

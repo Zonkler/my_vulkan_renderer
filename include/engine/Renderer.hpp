@@ -53,7 +53,6 @@ public:
 	void destroyCommandBuffer();
 	void destroyCommandPool();
 	void destroyDepthBuffer();
-    void setImageLayout(VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout, VkAccessFlagBits srcAccessMask, const VkCommandBuffer& cmd);
     
     struct{
 		VkFormat		format;
