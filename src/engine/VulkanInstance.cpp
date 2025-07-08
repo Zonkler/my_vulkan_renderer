@@ -6,8 +6,8 @@
 
 #include "engine/VulkanRenderdata.hpp"
 #include "engine/VulkanInstance.hpp"
-
-int VulkanInstance::init(VulkanRenderData& rData){
+#include "engine/VulkanContext.hpp"
+VulkanInstance::VulkanInstance(VulkanRenderData& rData,VulkanContext& vkContext){
 
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = rData.appname;
@@ -26,14 +26,15 @@ int VulkanInstance::init(VulkanRenderData& rData){
     VkResult result = vkCreateInstance(&instanceInfo, nullptr, &vulkanInstance);
     if (result != VK_SUCCESS) {
         std::cerr << "[WARNING][Logger][Vulkan Instance] Failed to create Vulkan instance, code: " << result << "\n";
-        return 0;
+
     }
 
+    vkContext.instance = &vulkanInstance;
     Logger::log(0, "[Logger][Vulkan Instance] Vulkan instance created\n");
-    return 1;
+
 }
 
-void VulkanInstance::destroy(){
+VulkanInstance::~VulkanInstance(){
     
     vkDestroyInstance(vulkanInstance,nullptr);
     Logger::log(0, "[Logger][Vulkan Instance] Vulkan instance destroyed\n");

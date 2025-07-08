@@ -1,4 +1,4 @@
-// Renderer.hpp
+
 #pragma once
 
 #include "window/window.hpp"
@@ -12,6 +12,8 @@
 #include "engine/VulkanQueue.hpp"
 #include "engine/Shader.hpp"
 #include "engine/VulkanGFXPipeline.hpp"
+
+#include "engine/VulkanContext.hpp"
 #include <SDL.h>
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT;
@@ -19,7 +21,7 @@
 
 class Renderer {
 public:
-    Renderer(VulkanRenderData& rData);
+    Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,VkSwapchainKHR& swapchain,VulkanSwapchain& vkSwap);
     ~Renderer();
 
     bool init();
@@ -27,14 +29,9 @@ public:
     void cleanup();
 
 
-private:
+public:
     VulkanRenderData        renderData;
-    window                  myWindow;
-    VulkanLayerAndExtension vkLayersExt;
-    VulkanInstance          vkInstance;
-    VulkanDebug             vkDebug;
-    VulkanDevice            vkDevice;
-    VulkanSwapchain         vkSwapchain;
+    VulkanSwapchain& vkSwapchain;
     VulkanQueue             m_vkQueue;
     VulkanGFXPipeline       m_GFXPipeline;
 
@@ -50,7 +47,7 @@ private:
 
     VkCommandPool		cmdPool;
 	VkCommandBuffer		cmdDepthImage;	// Command buffer for depth image layout
-    VmaAllocator        allocator;
+    VmaAllocator*        allocator;
 
     
 	void destroyCommandBuffer();
@@ -75,5 +72,9 @@ private:
     
     VkRenderPass createSimpleRenderPass(VkFormat format);
     std::vector<VkFramebuffer> createFrameBuffers(VkRenderPass);
+    VulkanContext& m_vkContext;
+
+    
 
 };
+

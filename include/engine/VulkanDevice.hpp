@@ -6,17 +6,18 @@
 
 #include <vma/vk_mem_alloc.h>
 
+#include "engine/VulkanContext.hpp"
+
 class VulkanDevice
 {
 public:
-    VulkanDevice()  = default;
-    ~VulkanDevice() = default;
+    VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> DeviceExtensions);
+    ~VulkanDevice();
 
-    int init(VkInstance& VKinst,std::vector<const char*> DeviceExtensions);
     void destroy();
 
 	// Query physical device to retrive queue properties
-	uint32_t getGraphicsQueueHandle();
+	void getGraphicsQueueHandle();
 
     void getDeviceQueue();
     

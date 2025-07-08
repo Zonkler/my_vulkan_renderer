@@ -7,16 +7,16 @@ class VulkanLayerAndExtension
 {
 private:
 
-    int gatherVulkanExtensions(VulkanRenderData& rData);
+    void gatherVulkanExtensions(VulkanRenderData& rData);
 
 public:
 
-    VulkanLayerAndExtension()  = default;
+    VulkanLayerAndExtension(VulkanRenderData& rData);
     ~VulkanLayerAndExtension() = default;
 
     
 
-    int init(VulkanRenderData& rData);
+
 
 };
 

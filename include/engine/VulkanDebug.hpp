@@ -4,8 +4,8 @@
 class VulkanDebug {
 public:
 
-    VulkanDebug()  = default;
-    ~VulkanDebug() = default;
+    VulkanDebug(VkInstance& instance);
+    ~VulkanDebug();
 
     int init(VkInstance& instance);
     void destroy();

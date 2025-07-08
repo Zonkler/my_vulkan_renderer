@@ -1,4 +1,4 @@
-// Renderer.cpp
+
 #include "tools/tools.hpp"
 #include "engine/Renderer.hpp"
 #include <vulkan/vulkan.h>
@@ -8,72 +8,33 @@
 #define VMA_IMPLEMENTATION
 
 #include <vma/vk_mem_alloc.h>
-
+#include "engine/VulkanSwapchain.hpp"
 #include "engine/Wrapper.hpp"
 #include "engine/Shader.hpp"
 #include "engine/VulkanGFXPipeline.hpp"
-Renderer::Renderer(VulkanRenderData &rData) : renderData(rData)
+#include "engine/VulkanContext.hpp"
+Renderer::Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,VkSwapchainKHR& swapchain,VulkanSwapchain& vkSwap) : renderData(rData) ,m_vkContext(vkContaxt), vkSwapchain(vkSwap)
 {
 	// Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
 	memset(&Depth, 0, sizeof(Depth));
-}
-
-Renderer::~Renderer()
-{
-	cleanup();
-}
-
-bool Renderer::init()
-{
 
 
-	if (!myWindow.init(renderData))
-	{
-		Logger::log(0, "[WARNING][Logger][Window] Window initialization failed\n");
-		return false;
-	}
+	allocator = m_vkContext.allocator;
 
-	if (!vkLayersExt.init(renderData))
-	{
-		Logger::log(0, "[WARNING][Logger][Vulkan layer & extension] Failed retrieving vulkan extensions\n");
-		return false;
-	}
-
-	if (!vkInstance.init(renderData))
-	{
-		Logger::log(0, "[WARNING][Logger][Vulkan Instance] Creation of Vulkan instance failed\n");
-		return false;
-	}
-
-	if (!vkDebug.init(vkInstance.Get_VKinstance()))
-	{
-		Logger::log(0, "[WARNING][Logger][Debug] Creation of debugger failed\n");
-		return false;
-	}
-
-	if (!vkDevice.init(vkInstance.Get_VKinstance(), {VK_KHR_SWAPCHAIN_EXTENSION_NAME}))
-	{
-		Logger::log(0, "[WARNING][Logger][Device] Creation of Logical device failed\n");
-		return false;
-	}
-
-	allocator = vkDevice.getAllocator();
-
-	vkSwapchain.init(renderData, vkInstance.Get_VKinstance(), vkDevice /*, cmdDepthImage*/);
 
 	createCommandPool();
 	createDepthImage();
 	buildSwapChainAndDepthImage();
 
-	m_vkQueue.init(vkDevice.device, vkSwapchain.swapChain, vkSwapchain.getGraphicsQueueWithPresentationSupport(vkDevice), 0, vkSwapchain.swapchainImageCount);
+	m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
 
-	m_cmdBuffers.resize(vkSwapchain.swapchainImageCount);
+	m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
 	
-	m_renderPass = createSimpleRenderPass(vkSwapchain.format);
+	m_renderPass = createSimpleRenderPass(m_vkContext.Format);
 	m_frameBuffers = createFrameBuffers(m_renderPass);
 
 
-	CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
+	CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
 
 	VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
 	VkClearValue clearValue;
@@ -105,10 +66,10 @@ bool Renderer::init()
 		.pClearValues = &clearValue
 	};
 
-	ShaderModules.emplace_back(std::make_unique<Shader>(&vkDevice.device,VK_SHADER_STAGE_VERTEX_BIT,"skibidi","../shaders/main.vert.spv"));
-	ShaderModules.emplace_back(std::make_unique<Shader>(&vkDevice.device,VK_SHADER_STAGE_FRAGMENT_BIT,"skibidi2","../shaders/main.frag.spv"));
+	ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device,VK_SHADER_STAGE_VERTEX_BIT,"skibidi","../shaders/main.vert.spv"));
+	ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device,VK_SHADER_STAGE_FRAGMENT_BIT,"skibidi2","../shaders/main.frag.spv"));
 	
-	m_GFXPipeline.init(vkDevice.device,renderData,m_renderPass,ShaderModules);
+	m_GFXPipeline.init(*m_vkContext.device,renderData,m_renderPass,ShaderModules);
 	
 	for (size_t i = 0; i < m_cmdBuffers.size(); i++)
 	{
@@ -130,6 +91,17 @@ bool Renderer::init()
 		vkCmdEndRenderPass(m_cmdBuffers[i]);
 		CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
 	}
+
+}
+
+Renderer::~Renderer()
+{
+	cleanup();
+}
+
+bool Renderer::init()
+{
+
 
 
 	return true;
@@ -172,55 +144,49 @@ void Renderer::run()
 
 void Renderer::cleanup()
 {
-	if (vkDevice.device)
+	if (m_vkContext.device)
 	{
-		vkDeviceWaitIdle(vkDevice.device);
+		vkDeviceWaitIdle(*m_vkContext.device);
 	}
 	destroyDepthBuffer();
-	vkSwapchain.destroy();
+
 	m_vkQueue.destroy();
 	destroyCommandBuffer();
 	destroyCommandPool();
 
-	vkDestroyRenderPass(vkDevice.device,m_renderPass,nullptr);
+	vkDestroyRenderPass(*m_vkContext.device,m_renderPass,nullptr);
 	
 	for (size_t i = 0; i < m_frameBuffers.size(); i++)
 	{
-		vkDestroyFramebuffer(vkDevice.device,m_frameBuffers[i],nullptr);
+		vkDestroyFramebuffer(*m_vkContext.device,m_frameBuffers[i],nullptr);
 	}
 	
 	ShaderModules.clear();
 	
-	vkDevice.destroy();
-	vkDebug.destroy();
-	vkInstance.destroy();
-	myWindow.destroy();
+
 
 	
 }
 
 void Renderer::createCommandPool()
 {
-	VulkanDevice &deviceObj = vkDevice;
-	/* Depends on intializeSwapChainExtension() */
+	
 	VkResult res;
 
 	VkCommandPoolCreateInfo cmdPoolInfo = {};
 	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	cmdPoolInfo.pNext = NULL;
-	cmdPoolInfo.queueFamilyIndex = deviceObj.graphicsQueueFamilyIndex;
+	cmdPoolInfo.queueFamilyIndex = m_vkContext.graphicsQueueFamilyIndex;
 	cmdPoolInfo.flags = 0;
 
-	res = vkCreateCommandPool(deviceObj.device, &cmdPoolInfo, NULL, &cmdPool);
+	res = vkCreateCommandPool(*m_vkContext.device, &cmdPoolInfo, NULL, &cmdPool);
 	Logger::log(0, "[Logger][Renderer] Command pool created\n");
 	// assert(res == VK_SUCCESS);
 }
 
 void Renderer::destroyCommandPool()
 {
-	VulkanDevice &deviceObj = vkDevice;
-
-	vkDestroyCommandPool(deviceObj.device, cmdPool, NULL);
+	vkDestroyCommandPool(*m_vkContext.device, cmdPool, NULL);
 
 	Logger::log(0, "[Logger][Renderer] Command pool destroyed\n");
 }
@@ -228,7 +194,7 @@ void Renderer::destroyCommandPool()
 void Renderer::destroyCommandBuffer()
 {
 	VkCommandBuffer cmdBufs[] = {cmdDepthImage};
-	vkFreeCommandBuffers(vkDevice.device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
+	vkFreeCommandBuffers(*m_vkContext.device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
 
 void Renderer::setImageLayout(
@@ -354,7 +320,7 @@ void Renderer::createDepthImage()
 
     // Check format support
     VkFormatProperties props;
-    vkGetPhysicalDeviceFormatProperties(vkDevice.gpu, depthFormat, &props);
+    vkGetPhysicalDeviceFormatProperties(*m_vkContext.pDevice, depthFormat, &props);
     if (!(props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
     {
         std::cerr << "Unsupported Depth Format for optimal tiling\n";
@@ -365,8 +331,8 @@ void Renderer::createDepthImage()
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.format = depthFormat;
-    imageInfo.extent.width = vkSwapchain.swapChainExtent.width;
-    imageInfo.extent.height = vkSwapchain.swapChainExtent.height;
+    imageInfo.extent.width = m_vkContext.swapchainExtent->width;
+    imageInfo.extent.height = m_vkContext.swapchainExtent->height;
     imageInfo.extent.depth = 1;
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
@@ -382,7 +348,7 @@ void Renderer::createDepthImage()
 
     // Create image and allocate memory with VMA
     VkResult result = vmaCreateImage(
-        allocator,   // Your VMA allocator instance
+        *m_vkContext.allocator,   // Your VMA allocator instance
         &imageInfo,
         &allocCreateInfo,
         &Depth.image,
@@ -411,11 +377,11 @@ void Renderer::createDepthImage()
         imgViewInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     }
 
-    result = vkCreateImageView(vkDevice.device, &imgViewInfo, nullptr, &Depth.view);
+    result = vkCreateImageView(*m_vkContext.device, &imgViewInfo, nullptr, &Depth.view);
     assert(result == VK_SUCCESS);
 
     // Use a command buffer to transition the image layout to DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    CommandBufferMgr::allocCommandBuffer(&vkDevice.device, cmdPool, &cmdDepthImage, nullptr, 1);
+    CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, &cmdDepthImage, nullptr, 1);
     CommandBufferMgr::beginCommandBuffer(cmdDepthImage);
     {
         setImageLayout(Depth.image,
@@ -426,23 +392,23 @@ void Renderer::createDepthImage()
                        cmdDepthImage);
     }
     CommandBufferMgr::endCommandBuffer(cmdDepthImage);
-    CommandBufferMgr::submitCommandBuffer(vkDevice.queue, &cmdDepthImage);
+    CommandBufferMgr::submitCommandBuffer(m_vkContext.queue, &cmdDepthImage);
 
     Logger::log(0, "[Logger][Renderer] Depth Buffer created with VMA\n");
 }
 
 void Renderer::buildSwapChainAndDepthImage()
 {
-	vkSwapchain.createColorImageView(cmdDepthImage, vkDevice);
+	vkSwapchain.createColorImageView(cmdDepthImage, *m_vkContext.device);
 }
 
 void Renderer::destroyDepthBuffer()
 {
     // Destroy image view
-    vkDestroyImageView(vkDevice.device, Depth.view, nullptr);
+    vkDestroyImageView(*m_vkContext.device, Depth.view, nullptr);
 
     // Destroy image and free memory using VMA
-    vmaDestroyImage(allocator, Depth.image, Depth.allocation);
+    vmaDestroyImage(*m_vkContext.allocator, Depth.image, Depth.allocation);
 
     Logger::log(0, "[Logger][Renderer] Depth Buffer destroyed (VMA)\n");
 }
@@ -481,7 +447,7 @@ VkRenderPass Renderer::createSimpleRenderPass(VkFormat format) {
     };
 
     VkRenderPass renderPass;
-    VkResult res = vkCreateRenderPass(vkDevice.device, &renderPassCreateInfo, nullptr, &renderPass);
+    VkResult res = vkCreateRenderPass(*m_vkContext.device, &renderPassCreateInfo, nullptr, &renderPass);
     if (res != VK_SUCCESS) {
         throw std::runtime_error("Failed to create render pass!");
     }
@@ -506,7 +472,7 @@ std::vector<VkFramebuffer> Renderer::createFrameBuffers(VkRenderPass renderPass)
 		fbCreateInfo.height = renderData.rdHeight;
 		fbCreateInfo.layers = 1;
 
-		vkCreateFramebuffer(vkDevice.device,&fbCreateInfo,nullptr,&m_frameBuffers[i]);
+		vkCreateFramebuffer(*m_vkContext.device,&fbCreateInfo,nullptr,&m_frameBuffers[i]);
 
 	}
 	

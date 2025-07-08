@@ -1,5 +1,5 @@
 #include "engine/VulkanGFXPipeline.hpp"
-
+#include "tools/tools.hpp"
 
 
 void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules){
@@ -46,8 +46,8 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
         },
 
         .extent{
-            .width=rdata.rdWidth,
-            .height=rdata.rdHeight
+            .width=static_cast<uint32_t>(rdata.rdWidth),
+            .height=static_cast<uint32_t>(rdata.rdHeight)
             
         }
 
@@ -117,10 +117,19 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
     };
 
     vkCreateGraphicsPipelines(m_device,VK_NULL_HANDLE,1,&PipelineInfo,nullptr,&m_pipeline);
-
+    Logger::log(0,"[Logger][Graphics Pipeline] Pipeline created\n");
 
 }
 
 void VulkanGFXPipeline::bind(VkCommandBuffer cmdbuff){
     vkCmdBindPipeline(cmdbuff,VK_PIPELINE_BIND_POINT_GRAPHICS,m_pipeline);
+}
+
+VulkanGFXPipeline::~VulkanGFXPipeline(){
+
+    vkDestroyPipeline(m_device,m_pipeline,nullptr);
+    Logger::log(0,"[Logger][Graphics Pipeline] Pipeline destroyed\n");
+    vkDestroyPipelineLayout(m_device,m_pipelineLayout,nullptr);
+    Logger::log(0,"[Logger][Graphics Pipeline] Pipeline Layout destroyed\n");
+
 }

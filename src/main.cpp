@@ -1,6 +1,7 @@
 #define SDL_MAIN_HANDLED
 
-#include "engine/Renderer.hpp"
+//#include "engine/Renderer.hpp"
+#include "Application.hpp"
 #include "engine/VulkanRenderdata.hpp"
 #include "tools/tools.hpp"
 #include <cassert>
@@ -13,11 +14,9 @@ int main() {
     
     renderData.appname = "Magma Core";
 
+    Application app(renderData);
     
-    Renderer renderer(renderData);
-    if (!renderer.init()) {
-        return -1;
-    }
-    renderer.run();
+    app.run();
+
     return 0;
 }

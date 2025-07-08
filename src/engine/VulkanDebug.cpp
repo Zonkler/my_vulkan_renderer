@@ -4,16 +4,16 @@
 
 #include "engine/VulkanDebug.hpp"
 
-int VulkanDebug::init(VkInstance& instance){
+VulkanDebug::VulkanDebug(VkInstance& instance){
 
     m_instance = &instance;
     setupDebugMessenger();
     Logger::log(0,"[Logger][Debugger] Debug created\n");
-    return 1;
+
 
 }
 
-void VulkanDebug::destroy(){
+VulkanDebug::~VulkanDebug(){
 
     if (debugMessenger != VK_NULL_HANDLE) {
         auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(*m_instance, "vkDestroyDebugUtilsMessengerEXT");

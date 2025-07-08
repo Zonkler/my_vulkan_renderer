@@ -24,14 +24,14 @@ Shader::Shader(const VkDevice *device, VkShaderStageFlagBits type, const std::st
         throw std::runtime_error("Failed to create shader module: " + file_name);
     }
 
-    Logger::log(0,"[Logger][Shader] Shader created with size {}",code.size());
+    Logger::log(0,"[Logger][Shader] Shader created with size {}b\n",code.size());
 }
 
 Shader::~Shader() {
     if (m_shader_module != VK_NULL_HANDLE) {
         vkDestroyShaderModule(*m_device, m_shader_module, nullptr);
     }
-    Logger::log(0,"[Logger][Shader] Shader destroyed");
+    Logger::log(0,"[Logger][Shader] Shader destroyed\n");
 
 }
 

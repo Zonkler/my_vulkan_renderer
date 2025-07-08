@@ -1,7 +1,8 @@
+#pragma once
 #include <vulkan/vulkan.h>
 #include "engine/VulkanRenderdata.hpp"
-
-class VulkanDevice; //forward declare
+#include "engine/VulkanContext.hpp"
+#include "engine/VulkanDevice.hpp"
 
 struct SwapChainBuffer{
 	VkImage image;
@@ -58,17 +59,17 @@ public:
 
 
 public:
-    VulkanSwapchain()  = default;
-    ~VulkanSwapchain() = default;
+    VulkanSwapchain(const VulkanRenderData& rData,VulkanContext& vkContext, VulkanDevice& Device);
+    ~VulkanSwapchain();
     int init(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device/*,const VkCommandBuffer& cmd*/);
-    void destroy();
+    //void destroy();
 
     void getSupportedFormats(const VulkanDevice& Device);
     void getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& device,const VulkanRenderData& rData);
     void printCapabilities();
     void managePresentMode();
     void createSwapChainColorBufferImages(const VulkanDevice& Device);
-    void createColorImageView(const VkCommandBuffer& cmd,const VulkanDevice& Device);
+    void createColorImageView(const VkCommandBuffer& cmd,const VkDevice& Device);
 
 };
 

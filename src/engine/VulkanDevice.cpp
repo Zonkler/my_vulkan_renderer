@@ -1,29 +1,39 @@
-#include <cassert>
+
 
 #include <vulkan/vulkan.h>
 
+#include <cassert>
+#include <vector>
 #include "tools/tools.hpp"
 
 #include "engine/VulkanDevice.hpp"
 
-int VulkanDevice::init(VkInstance &VKinst, std::vector<const char *> DeviceExtensions)
+#include "engine/VulkanContext.hpp"
+
+
+VulkanDevice::VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> DeviceExtensions)
 {
 
-    if (enumeratePhysicalDevices(VKinst) != VK_SUCCESS)
-        return 0;
+    VkInstance VKinst = *vkContext.instance;
+    
+    enumeratePhysicalDevices(VKinst);
+
     getPhysicalDeviceQueuesAndProperties();
-    if (getGraphicsQueueHandle())
-        return 0;
+    getGraphicsQueueHandle();
+
     createDevice(DeviceExtensions);
     getDeviceQueue();
     Logger::log(0, "[Logger][Device] Logical device created\n");
-
     initializeVMA(VKinst);
 
-    return 1;
+    vkContext.device = &device;
+    vkContext.pDevice = &gpu;
+    vkContext.allocator = &allocator;
+    vkContext.graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
+    vkContext.queue = queue;
 }
 
-void VulkanDevice::destroy()
+VulkanDevice::~VulkanDevice()
 {
 
     vmaDestroyAllocator(allocator);
@@ -78,7 +88,7 @@ void VulkanDevice::getPhysicalDeviceQueuesAndProperties()
     vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queueFamilyCount, queueFamilyProps.data());
 }
 
-uint32_t VulkanDevice::getGraphicsQueueHandle()
+void VulkanDevice::getGraphicsQueueHandle()
 {
 
     bool found = false;
@@ -96,11 +106,11 @@ uint32_t VulkanDevice::getGraphicsQueueHandle()
     if (found)
     {
         Logger::log(0, "[Logger][Device] Graphics queue located\n");
-        return 0;
+
     }
 
     Logger::log(0, "[Logger][Device] Graphics queue could not belocated\n");
-    return 1;
+
 }
 
 void VulkanDevice::createDevice(std::vector<const char *> DeviceExtensions)

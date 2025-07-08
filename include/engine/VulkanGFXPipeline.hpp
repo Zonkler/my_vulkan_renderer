@@ -14,7 +14,7 @@ private:
 
 public:
     VulkanGFXPipeline() = default;
-    ~VulkanGFXPipeline()= default;
+    ~VulkanGFXPipeline();
 
     void init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules);
     void destroy();

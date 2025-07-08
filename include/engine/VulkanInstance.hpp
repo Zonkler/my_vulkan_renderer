@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include "engine/VulkanRenderdata.hpp"
+#include "engine/VulkanContext.hpp"
 
 class VulkanInstance
 {
@@ -12,11 +13,8 @@ private:
     VkInstance vulkanInstance;
 
 public:
-    VulkanInstance() = default;
-    ~VulkanInstance()= default;
-    
-    int init(VulkanRenderData& rData);
-    void destroy();
+    VulkanInstance(VulkanRenderData& rData,VulkanContext& vkContext);
+    ~VulkanInstance();
     
     VkInstance& Get_VKinstance();
 

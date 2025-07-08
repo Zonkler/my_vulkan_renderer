@@ -5,15 +5,16 @@
 #include "engine/VulkanRenderdata.hpp"
 #include "tools/tools.hpp"
 #include "engine/VulkanDevice.hpp"
+#include "engine/VulkanContext.hpp"
 #include <vector>
 #include <cassert>
 #include <iostream>
 
-int VulkanSwapchain::init(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device/*,const VkCommandBuffer& cmd*/){
-	m_instance = &Instance;
+VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& vkContext, VulkanDevice& Device){
+	m_instance = vkContext.instance;
 	m_DeviceObj = &Device.device;
 
-	auto result = SDL_Vulkan_CreateSurface(rData.window, Instance, &surface);
+	auto result = SDL_Vulkan_CreateSurface(rData.window, *m_instance, &surface);
     if (!result)
     {
         Logger::log(0,"[ERROR][Logger][Swapchain] SDL failed to create surface\n");
@@ -29,11 +30,13 @@ int VulkanSwapchain::init(const VulkanRenderData& rData, const VkInstance& Insta
 	printCapabilities();
 	managePresentMode();
 	createSwapChainColorBufferImages(Device);
-	return 1;
 
+	vkContext.swapchainExtent = &swapChainExtent;
+	vkContext.SwapchainImageCnt = swapchainImageCount;
+	vkContext.Format = format;
 }
 
-void VulkanSwapchain::destroy(){
+VulkanSwapchain::~VulkanSwapchain(){
 
 	for (auto& buffer : colorBuffer) {
 		if (buffer.view != VK_NULL_HANDLE) {
@@ -179,6 +182,7 @@ void VulkanSwapchain::getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& d
 	}
 
 
+
 };
 
 void VulkanSwapchain::printCapabilities(){
@@ -321,7 +325,7 @@ void VulkanSwapchain::createSwapChainColorBufferImages(const VulkanDevice& Devic
 
 }
 
-void VulkanSwapchain::createColorImageView(const VkCommandBuffer& cmd,const VulkanDevice& Device){
+void VulkanSwapchain::createColorImageView(const VkCommandBuffer& cmd,const VkDevice& Device){
 	
 	colorBuffer.clear();
 
@@ -349,7 +353,7 @@ void VulkanSwapchain::createColorImageView(const VkCommandBuffer& cmd,const Vulk
 
 		sc_buffer.image = swapchainImages[i];
 		imgViewInfo.image = sc_buffer.image;
-		result = vkCreateImageView(Device.device, &imgViewInfo, NULL, &sc_buffer.view);
+		result = vkCreateImageView(Device, &imgViewInfo, NULL, &sc_buffer.view);
 		colorBuffer.push_back(sc_buffer);
 		assert(result == VK_SUCCESS);
 
