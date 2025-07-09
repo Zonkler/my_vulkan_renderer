@@ -29,10 +29,27 @@ target_sources(imgui PRIVATE
     imgui/imgui_impl_sdl2.cpp
     imgui/imgui_impl_vulkan.cpp
 )
-target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2)
+target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2 assimp::assimp)
 
 # fmt
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 
 # SDL2
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
+
+# ========== Assimp CMake Options ==========
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+
+# Enable only importers you use
+set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
+
+add_subdirectory(assimp-master EXCLUDE_FROM_ALL)

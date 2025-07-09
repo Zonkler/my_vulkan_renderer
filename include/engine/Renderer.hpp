@@ -24,13 +24,11 @@ public:
     Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,VkSwapchainKHR& swapchain,VulkanSwapchain& vkSwap);
     ~Renderer();
 
-    bool init();
     void run();
-    void cleanup();
 
 
 public:
-    VulkanRenderData        renderData;
+    VulkanRenderData&        renderData;
     VulkanSwapchain& vkSwapchain;
     VulkanQueue             m_vkQueue;
     VulkanGFXPipeline       m_GFXPipeline;
@@ -43,7 +41,7 @@ public:
     void createCommandPool();							// Create command pool
 	void buildSwapChainAndDepthImage();					// Create swapchain color image and depth image
 	void createDepthImage();							// Create depth image
-
+    void recordCommandbuffers();
 
     VkCommandPool		cmdPool;
 	VkCommandBuffer		cmdDepthImage;	// Command buffer for depth image layout
@@ -69,8 +67,6 @@ public:
 
     std::vector<std::unique_ptr<Shader>> ShaderModules;
     
-    VkRenderPass createSimpleRenderPass(VkFormat format);
-    std::vector<VkFramebuffer> createFrameBuffers(VkRenderPass);
     VulkanContext& m_vkContext;
 
     

@@ -11,7 +11,7 @@ window::window(VulkanRenderData& rData){
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "[WARNING][Logger][Window] Failed to initialize SDL: " << SDL_GetError() << std::endl;
-        //return 0;
+        
     }
 
     // Load Vulkan library

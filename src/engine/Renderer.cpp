@@ -6,6 +6,7 @@
 #include <cassert>
 
 #define VMA_IMPLEMENTATION
+#include "tools/exception.hpp"
 
 #include <vma/vk_mem_alloc.h>
 #include "engine/VulkanSwapchain.hpp"
@@ -14,149 +15,161 @@
 #include "engine/VulkanGFXPipeline.hpp"
 #include "engine/VulkanContext.hpp"
 #include "tools/VulkanTools.hpp"
-Renderer::Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,VkSwapchainKHR& swapchain,VulkanSwapchain& vkSwap) : renderData(rData) ,m_vkContext(vkContaxt), vkSwapchain(vkSwap)
+Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, VkSwapchainKHR &swapchain, VulkanSwapchain &vkSwap) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(vkSwap)
 {
-	// Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
-	memset(&Depth, 0, sizeof(Depth));
+    // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
+    memset(&Depth, 0, sizeof(Depth));
 
+    allocator = m_vkContext.allocator;
 
-	allocator = m_vkContext.allocator;
+    createCommandPool();
+    createDepthImage();
+    buildSwapChainAndDepthImage();
 
+    m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
+    
+    ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_VERTEX_BIT, "skibidi", "../shaders/main.vert.spv"));
+    ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_FRAGMENT_BIT, "skibidi2", "../shaders/main.frag.spv"));
 
-	createCommandPool();
-	createDepthImage();
-	buildSwapChainAndDepthImage();
+    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain.format, Depth.format);
 
-	m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
-
-	m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
-	
-	m_renderPass = createSimpleRenderPass(m_vkContext.Format);
-	m_frameBuffers = createFrameBuffers(m_renderPass);
-
-
-	CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
-
-	VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
-	VkClearValue clearValue;
-	clearValue.color = Clearcolor;
-
-	VkImageSubresourceRange ImageRange = {
-		.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-		.baseMipLevel = 0,
-		.levelCount = 1,
-		.baseArrayLayer = 0,
-		.layerCount = 1
-	};
-	
-	VkRenderPassBeginInfo RenderPassBeginInfo{
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-		.pNext = nullptr,
-		.renderPass = m_renderPass,
-		.renderArea = {
-			.offset = {
-				.x=0,
-				.y=0
-			},
-			.extent = {
-				.width = static_cast<uint32_t>(renderData.rdWidth),
-				.height = static_cast<uint32_t>(renderData.rdHeight)
-			}
-		},
-		.clearValueCount =1,
-		.pClearValues = &clearValue
-	};
-
-	ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device,VK_SHADER_STAGE_VERTEX_BIT,"skibidi","../shaders/main.vert.spv"));
-	ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device,VK_SHADER_STAGE_FRAGMENT_BIT,"skibidi2","../shaders/main.frag.spv"));
-	
-	m_GFXPipeline.init(*m_vkContext.device,renderData,m_renderPass,ShaderModules);
-	
-	for (size_t i = 0; i < m_cmdBuffers.size(); i++)
-	{
-		CommandBufferMgr::beginCommandBuffer(m_cmdBuffers[i], nullptr);
-
-		RenderPassBeginInfo.framebuffer = m_frameBuffers[i];
-		
-		vkCmdBeginRenderPass(m_cmdBuffers[i],&RenderPassBeginInfo,VK_SUBPASS_CONTENTS_INLINE);
-
-		m_GFXPipeline.bind(m_cmdBuffers[i]);
-
-		uint32_t vertexcount{3};
-		uint32_t instancecount{1};
-		uint32_t firstvertex{0};
-		uint32_t firstinstance{0};
-
-		vkCmdDraw(m_cmdBuffers[i],vertexcount,instancecount,firstvertex,firstinstance);
-
-		vkCmdEndRenderPass(m_cmdBuffers[i]);
-		CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
-	}
-
+    recordCommandbuffers();
 }
 
 Renderer::~Renderer()
 {
-	if (m_vkContext.device)
-	{
-		vkDeviceWaitIdle(*m_vkContext.device);
-	}
-	destroyDepthBuffer();
+    if (m_vkContext.device)
+    {
+        vkDeviceWaitIdle(*m_vkContext.device);
+    }
+    destroyDepthBuffer();
 
-	m_vkQueue.destroy();
-	destroyCommandBuffer();
-	destroyCommandPool();
-
-	vkDestroyRenderPass(*m_vkContext.device,m_renderPass,nullptr);
-	
-	for (size_t i = 0; i < m_frameBuffers.size(); i++)
-	{
-		vkDestroyFramebuffer(*m_vkContext.device,m_frameBuffers[i],nullptr);
-	}
-	
-	ShaderModules.clear();
+    m_vkQueue.destroy();
+    destroyCommandBuffer();
+    destroyCommandPool();
 }
 
 void Renderer::renderFrame()
 {
-	m_vkQueue.waitForCurrentFrameFence();
+    m_vkQueue.waitForCurrentFrameFence();
 
-	uint32_t imageIndex = m_vkQueue.acquireNextImage();
+    uint32_t imageIndex = m_vkQueue.acquireNextImage();
 
-	m_vkQueue.submitAsync(m_cmdBuffers[imageIndex], imageIndex);
+    m_vkQueue.submitAsync(m_cmdBuffers[imageIndex], imageIndex);
 
-	m_vkQueue.present(imageIndex);
-	
+    m_vkQueue.present(imageIndex);
 }
 
 void Renderer::createCommandPool()
 {
-	
-	VkResult res;
 
-	VkCommandPoolCreateInfo cmdPoolInfo = {};
-	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolInfo.pNext = NULL;
-	cmdPoolInfo.queueFamilyIndex = m_vkContext.graphicsQueueFamilyIndex;
-	cmdPoolInfo.flags = 0;
+    VkResult res;
 
-	res = vkCreateCommandPool(*m_vkContext.device, &cmdPoolInfo, NULL, &cmdPool);
-	Logger::log(0, "[Logger][Renderer] Command pool created\n");
-	// assert(res == VK_SUCCESS);
+    VkCommandPoolCreateInfo cmdPoolInfo = {};
+    cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdPoolInfo.pNext = NULL;
+    cmdPoolInfo.queueFamilyIndex = m_vkContext.graphicsQueueFamilyIndex;
+    cmdPoolInfo.flags = 0;
+
+    res = vkCreateCommandPool(*m_vkContext.device, &cmdPoolInfo, NULL, &cmdPool);
+    Logger::log(0, "[Logger][Renderer] Command pool created\n");
+    // assert(res == VK_SUCCESS);
 }
 
 void Renderer::destroyCommandPool()
 {
-	vkDestroyCommandPool(*m_vkContext.device, cmdPool, NULL);
+    vkDestroyCommandPool(*m_vkContext.device, cmdPool, NULL);
 
-	Logger::log(0, "[Logger][Renderer] Command pool destroyed\n");
+    Logger::log(0, "[Logger][Renderer] Command pool destroyed\n");
 }
 
 void Renderer::destroyCommandBuffer()
 {
-	VkCommandBuffer cmdBufs[] = {cmdDepthImage};
-	vkFreeCommandBuffers(*m_vkContext.device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
+    VkCommandBuffer cmdBufs[] = {cmdDepthImage};
+    vkFreeCommandBuffers(*m_vkContext.device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
+
+void Renderer::recordCommandbuffers(){
+    m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
+
+    CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
+
+    VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
+    VkClearValue clearValue;
+    clearValue.color = Clearcolor;
+
+    
+    VkClearValue depthClearValue{};
+    depthClearValue.depthStencil = {1.0f, 0}; // Depth=1.0, Stencil=0
+
+
+        // For each command buffer:
+    for (size_t i = 0; i < m_cmdBuffers.size(); i++)
+    {
+        CommandBufferMgr::beginCommandBuffer(m_cmdBuffers[i], nullptr);
+
+        vkutils::setImageLayout(vkSwapchain.swapchainImages[i], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                VK_ACCESS_NONE,
+                                m_cmdBuffers[i]);
+
+        // Begin dynamic rendering
+        VkRenderingAttachmentInfo colorAttachment{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = vkSwapchain.colorBuffer[i].view,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = clearValue
+        };
+
+        VkRenderingAttachmentInfo depthAttachment{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = Depth.view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .clearValue = depthClearValue
+        };
+
+        VkRenderingInfo renderInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea = {{0, 0}, {renderData.rdWidth, renderData.rdHeight}},
+            .layerCount = 1,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachment,
+            .pDepthAttachment = &depthAttachment
+
+        };
+            
+        vkCmdBeginRendering(m_cmdBuffers[i], &renderInfo);
+
+        m_GFXPipeline.bind(m_cmdBuffers[i]);
+
+        uint32_t vertexcount{3};
+        uint32_t instancecount{1};
+        uint32_t firstvertex{0};
+        uint32_t firstinstance{0};
+
+        vkCmdDraw(m_cmdBuffers[i], vertexcount, instancecount, firstvertex, firstinstance);
+
+        // Drawing commands...
+        vkCmdEndRendering(m_cmdBuffers[i]);
+
+        vkutils::setImageLayout(
+            vkSwapchain.swapchainImages[i],
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            m_cmdBuffers[i]);
+
+        CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
+    }
+
+
+}
+
 
 void Renderer::createDepthImage()
 {
@@ -197,11 +210,11 @@ void Renderer::createDepthImage()
 
     // Create image and allocate memory with VMA
     VkResult result = vmaCreateImage(
-        *m_vkContext.allocator,   // Your VMA allocator instance
+        *m_vkContext.allocator, // Your VMA allocator instance
         &imageInfo,
         &allocCreateInfo,
         &Depth.image,
-        &Depth.allocation,       // Note: You need to add this member: VmaAllocation Depth.allocation;
+        &Depth.allocation, // Note: You need to add this member: VmaAllocation Depth.allocation;
         nullptr);
     assert(result == VK_SUCCESS);
 
@@ -234,11 +247,11 @@ void Renderer::createDepthImage()
     CommandBufferMgr::beginCommandBuffer(cmdDepthImage);
     {
         vkutils::setImageLayout(Depth.image,
-                       imgViewInfo.subresourceRange.aspectMask,
-                       VK_IMAGE_LAYOUT_UNDEFINED,
-                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                       (VkAccessFlagBits)0,
-                       cmdDepthImage);
+                                imgViewInfo.subresourceRange.aspectMask,
+                                VK_IMAGE_LAYOUT_UNDEFINED,
+                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                (VkAccessFlagBits)0,
+                                cmdDepthImage);
     }
     CommandBufferMgr::endCommandBuffer(cmdDepthImage);
     CommandBufferMgr::submitCommandBuffer(m_vkContext.queue, &cmdDepthImage);
@@ -248,7 +261,7 @@ void Renderer::createDepthImage()
 
 void Renderer::buildSwapChainAndDepthImage()
 {
-	vkSwapchain.createColorImageView(cmdDepthImage, *m_vkContext.device);
+    vkSwapchain.createColorImageView(cmdDepthImage, *m_vkContext.device);
 }
 
 void Renderer::destroyDepthBuffer()
@@ -263,68 +276,3 @@ void Renderer::destroyDepthBuffer()
 }
 
 
-VkRenderPass Renderer::createSimpleRenderPass(VkFormat format) {
-    VkAttachmentDescription attachDesc = {
-        .flags = 0,
-        .format = format,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    };
-
-    VkAttachmentReference attachRef = {
-        .attachment = 0,
-        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL  // ✅ FIXED
-    };
-
-    VkSubpassDescription subpassDesc = {
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &attachRef
-    };
-
-    VkRenderPassCreateInfo renderPassCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &attachDesc,
-        .subpassCount = 1,
-        .pSubpasses = &subpassDesc
-    };
-
-    VkRenderPass renderPass;
-    VkResult res = vkCreateRenderPass(*m_vkContext.device, &renderPassCreateInfo, nullptr, &renderPass);
-    if (res != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create render pass!");
-    }
-
-    std::cout << "Created simple render pass\n";
-    return renderPass;
-}
-
-std::vector<VkFramebuffer> Renderer::createFrameBuffers(VkRenderPass renderPass){
-
-	m_frameBuffers.resize(vkSwapchain.swapchainImageCount);
-
-	for (size_t i = 0; i < m_frameBuffers.size(); i++)
-	{
-		VkFramebufferCreateInfo fbCreateInfo{};
-
-		fbCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fbCreateInfo.renderPass = renderPass;
-		fbCreateInfo.attachmentCount = 1;
-		fbCreateInfo.pAttachments = &vkSwapchain.colorBuffer[i].view;
-		fbCreateInfo.width = renderData.rdWidth;
-		fbCreateInfo.height = renderData.rdHeight;
-		fbCreateInfo.layers = 1;
-
-		vkCreateFramebuffer(*m_vkContext.device,&fbCreateInfo,nullptr,&m_frameBuffers[i]);
-
-	}
-	
-	return m_frameBuffers;
-
-}

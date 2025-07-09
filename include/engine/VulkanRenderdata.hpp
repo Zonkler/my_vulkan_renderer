@@ -8,9 +8,9 @@ struct VulkanRenderData {
     
     const char * appname = nullptr;
     
-    int rdWidth = 0;
+    uint32_t rdWidth = 0;
     
-    int rdHeight = 0;
+    uint32_t rdHeight = 0;
   
     std::vector<const char*> extensions;
 

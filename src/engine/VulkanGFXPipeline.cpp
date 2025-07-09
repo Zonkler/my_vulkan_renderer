@@ -2,7 +2,7 @@
 #include "tools/tools.hpp"
 
 
-void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules){
+void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat){
 
     m_device = Device;
 
@@ -70,6 +70,7 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
 
     };
 
+
     VkPipelineMultisampleStateCreateInfo PipelineMSCrateinfo{
         .sType= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
@@ -99,6 +100,24 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
 
     vkCreatePipelineLayout(m_device,&LayoutInfo,nullptr,&m_pipelineLayout);
 
+    
+    VkPipelineRenderingCreateInfoKHR renderingInfo{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+        .colorAttachmentCount = 1,
+        .pColorAttachmentFormats = &colorFormat,
+        .depthAttachmentFormat = depthFormat
+    };
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {};
+    depthStencil.back = {};
+
     VkGraphicsPipelineCreateInfo PipelineInfo{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = 2,
@@ -110,12 +129,13 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
         .pMultisampleState = &PipelineMSCrateinfo,
         .pColorBlendState = &BlendCreateInfo,
         .layout = m_pipelineLayout,
-        .renderPass= RenderPass,
+        .renderPass= VK_NULL_HANDLE,
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
         .basePipelineIndex = -1
     };
-
+    PipelineInfo.pNext = &renderingInfo;
+    PipelineInfo.pDepthStencilState=&depthStencil;
     vkCreateGraphicsPipelines(m_device,VK_NULL_HANDLE,1,&PipelineInfo,nullptr,&m_pipeline);
     Logger::log(0,"[Logger][Graphics Pipeline] Pipeline created\n");
 

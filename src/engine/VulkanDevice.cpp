@@ -115,6 +115,7 @@ void VulkanDevice::getGraphicsQueueHandle()
 
 void VulkanDevice::createDevice(std::vector<const char *> DeviceExtensions)
 {
+    DeviceExtensions.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
 
     VkResult result = VK_SUCCESS;
     float queuePriority = 0.0;
