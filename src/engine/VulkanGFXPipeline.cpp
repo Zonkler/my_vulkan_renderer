@@ -1,6 +1,6 @@
 #include "engine/VulkanGFXPipeline.hpp"
 #include "tools/tools.hpp"
-
+#include "engine/VulkanVertexBuffer.hpp"
 
 void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat){
 
@@ -19,9 +19,15 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
     shaderStageCreateInfo[1].module= ShaderModules[1]->module();
     shaderStageCreateInfo[1].pName = "main";
 
-    VkPipelineVertexInputStateCreateInfo VertexInputInfo{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-    };
+    VertexInputDescription description = Vertex::get_vertex_description();
+
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(description.bindings.size());
+    vertexInputInfo.pVertexBindingDescriptions = description.bindings.data();
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(description.attributes.size());
+    vertexInputInfo.pVertexAttributeDescriptions = description.attributes.data();
 
     VkPipelineInputAssemblyStateCreateInfo PipelineIACreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
@@ -92,6 +98,7 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
         .pAttachments = &BlendAttachState
     };
 
+
     VkPipelineLayoutCreateInfo LayoutInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 0,
@@ -122,7 +129,7 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = 2,
         .pStages= &shaderStageCreateInfo[0],
-        .pVertexInputState = &VertexInputInfo,
+        .pVertexInputState = &vertexInputInfo,
         .pInputAssemblyState= &PipelineIACreateInfo,
         .pViewportState = &VPCreateinfo,
         .pRasterizationState = &RastCreateInfo,

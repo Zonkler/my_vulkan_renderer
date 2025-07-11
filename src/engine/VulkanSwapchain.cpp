@@ -311,7 +311,7 @@ void VulkanSwapchain::createSwapChainColorBufferImages(const VulkanDevice& Devic
 	VkResult result = vkCreateSwapchainKHR(Device.device,&scInfo,nullptr,&swapChain);
 	
 
-		// Create the swapchain object
+	// Create the swapchain object
 	result = vkGetSwapchainImagesKHR(Device.device, swapChain, &swapchainImageCount, NULL);
 	assert(result == VK_SUCCESS);
 

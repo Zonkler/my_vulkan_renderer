@@ -11,6 +11,7 @@ private:
     VkDevice m_device = nullptr;
     VkPipeline m_pipeline = nullptr;
     VkPipelineLayout m_pipelineLayout = nullptr; 
+    VkDescriptorSetLayout m_descriptorSetLayout;
 
 public:
     VulkanGFXPipeline() = default;

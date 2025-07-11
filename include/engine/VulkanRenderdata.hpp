@@ -2,6 +2,78 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <vector>
+#include <vulkan/vulkan.h>
+#include <vma/vk_mem_alloc.h>
+
+
+struct VkVertex {
+  glm::vec3 position = glm::vec3(0.0f);
+  glm::vec4 color = glm::vec4(1.0f);
+  glm::vec3 normal = glm::vec3(0.0f);
+  glm::vec2 uv = glm::vec2(0.0f);
+  glm::uvec4 boneNumber = glm::uvec4(0);
+  glm::vec4 boneWeight = glm::vec4(0.0f);
+};
+
+struct VkMesh {
+  std::vector<VkVertex> vertices{};
+  std::vector<uint32_t> indices{};
+  //std::unordered_map<aiTextureType, std::string> textures{};
+  bool usesPBRColors = false;
+};
+
+struct VkUploadMatrices {
+  glm::mat4 viewMatrix{};
+  glm::mat4 projectionMatrix{};
+};
+
+struct VkTextureData {
+  VkImage image = VK_NULL_HANDLE;
+  VkImageView imageView = VK_NULL_HANDLE;
+  VkSampler sampler = VK_NULL_HANDLE;
+  VmaAllocation imageAlloc = nullptr;
+
+  VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+};
+
+struct VkVertexBufferData {
+  unsigned int bufferSize = 0;
+  void* data = nullptr;
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VmaAllocation bufferAlloc = VK_NULL_HANDLE;
+  VkBuffer stagingBuffer = VK_NULL_HANDLE;
+  VmaAllocation stagingBufferAlloc = VK_NULL_HANDLE;
+};
+
+struct VkIndexBufferData {
+  size_t bufferSize = 0;
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VmaAllocation bufferAlloc = nullptr;
+  VkBuffer stagingBuffer = VK_NULL_HANDLE;
+  VmaAllocation stagingBufferAlloc = nullptr;
+};
+
+struct VkUniformBufferData {
+  size_t bufferSize = 0;
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VmaAllocation bufferAlloc = nullptr;
+
+  VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+};
+
+struct VkShaderStorageBufferData {
+  size_t bufferSize = 0;
+  VkBuffer buffer = VK_NULL_HANDLE;
+  VmaAllocation bufferAlloc = nullptr;
+
+  VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+};
+
+struct VkPushConstants {
+  int pkModelStride;
+  int pkWorldPosOffset;
+};
+
 
 struct VulkanRenderData {
     SDL_Window* window = nullptr;
@@ -23,7 +95,7 @@ struct VulkanRenderData {
   //int rdLightIndex=0;
   //const int rdMaxLights=32;
 
-  //int rdFieldOfView = 60;
+  int rdFieldOfView = 60;
 
   //float rdFrameTime = 0.0f;
   //float rdMatrixGenerateTime = 0.0f;
@@ -32,11 +104,11 @@ struct VulkanRenderData {
   //float rdUIGenerateTime = 0.0f;
   //float rdUIDrawTime = 0.0f;
 
-  //int rdMoveForward = 0;
-  //int rdMoveRight = 0;
-  //int rdMoveUp = 0;
+  int rdMoveForward = 0;
+  int rdMoveRight = 0;
+  int rdMoveUp = 0;
 
-  //float rdViewAzimuth = 330.0f;
-  //float rdViewElevation = -20.0f;
-  //glm::vec3 rdCameraWorldPosition = glm::vec3(2.0f, 5.0f, 7.0f);
+  float rdViewAzimuth = 330.0f;
+  float rdViewElevation = -20.0f;
+  glm::vec3 rdCameraWorldPosition = glm::vec3(2.0f, 5.0f, 7.0f);
 };

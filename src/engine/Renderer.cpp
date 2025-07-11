@@ -15,6 +15,7 @@
 #include "engine/VulkanGFXPipeline.hpp"
 #include "engine/VulkanContext.hpp"
 #include "tools/VulkanTools.hpp"
+#include "engine/VulkanVertexBuffer.hpp"
 Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, VkSwapchainKHR &swapchain, VulkanSwapchain &vkSwap) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(vkSwap)
 {
     // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
@@ -33,11 +34,16 @@ Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, VkSwapchai
 
     m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain.format, Depth.format);
 
-    recordCommandbuffers();
+    triangle = std::make_unique<Model>(*allocator);
+    m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
+    CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, &m_cmdBuffers[0], nullptr, m_cmdBuffers.size());
+
+
 }
 
 Renderer::~Renderer()
 {
+    
     if (m_vkContext.device)
     {
         vkDeviceWaitIdle(*m_vkContext.device);
@@ -55,6 +61,8 @@ void Renderer::renderFrame()
 
     uint32_t imageIndex = m_vkQueue.acquireNextImage();
 
+    recordCommandbuffers(imageIndex);
+
     m_vkQueue.submitAsync(m_cmdBuffers[imageIndex], imageIndex);
 
     m_vkQueue.present(imageIndex);
@@ -69,7 +77,7 @@ void Renderer::createCommandPool()
     cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     cmdPoolInfo.pNext = NULL;
     cmdPoolInfo.queueFamilyIndex = m_vkContext.graphicsQueueFamilyIndex;
-    cmdPoolInfo.flags = 0;
+    cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     res = vkCreateCommandPool(*m_vkContext.device, &cmdPoolInfo, NULL, &cmdPool);
     Logger::log(0, "[Logger][Renderer] Command pool created\n");
@@ -89,34 +97,31 @@ void Renderer::destroyCommandBuffer()
     vkFreeCommandBuffers(*m_vkContext.device, cmdPool, sizeof(cmdBufs) / sizeof(VkCommandBuffer), cmdBufs);
 }
 
-void Renderer::recordCommandbuffers(){
-    m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
+void Renderer::recordCommandbuffers(uint32_t index){
 
-    CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, m_cmdBuffers.data(), nullptr, m_cmdBuffers.size());
-
+    auto& cmd = m_cmdBuffers[index];
+    vkResetCommandBuffer(m_cmdBuffers[index], 0); // required if re-recording
     VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
     VkClearValue clearValue;
     clearValue.color = Clearcolor;
 
-    
     VkClearValue depthClearValue{};
     depthClearValue.depthStencil = {1.0f, 0}; // Depth=1.0, Stencil=0
 
 
-        // For each command buffer:
-    for (size_t i = 0; i < m_cmdBuffers.size(); i++)
-    {
-        CommandBufferMgr::beginCommandBuffer(m_cmdBuffers[i], nullptr);
 
-        vkutils::setImageLayout(vkSwapchain.swapchainImages[i], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+
+        CommandBufferMgr::beginCommandBuffer(cmd, nullptr);
+
+        vkutils::setImageLayout(vkSwapchain.swapchainImages[index], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 VK_ACCESS_NONE,
-                                m_cmdBuffers[i]);
+                                cmd);
 
         // Begin dynamic rendering
         VkRenderingAttachmentInfo colorAttachment{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = vkSwapchain.colorBuffer[i].view,
+            .imageView = vkSwapchain.colorBuffer[index].view,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -142,30 +147,30 @@ void Renderer::recordCommandbuffers(){
 
         };
             
-        vkCmdBeginRendering(m_cmdBuffers[i], &renderInfo);
+        vkCmdBeginRendering(cmd, &renderInfo);
 
-        m_GFXPipeline.bind(m_cmdBuffers[i]);
+        m_GFXPipeline.bind(cmd);
 
-        uint32_t vertexcount{3};
-        uint32_t instancecount{1};
-        uint32_t firstvertex{0};
-        uint32_t firstinstance{0};
+        VkBuffer vertexBuffers[] = { triangle->m_mesh.m_vertexBuffer.m_buffer };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-        vkCmdDraw(m_cmdBuffers[i], vertexcount, instancecount, firstvertex, firstinstance);
+                // 🔹 Issue draw call
+        vkCmdDraw(cmd, 3, 1, 0, 0);
 
         // Drawing commands...
-        vkCmdEndRendering(m_cmdBuffers[i]);
+        vkCmdEndRendering(cmd);
 
         vkutils::setImageLayout(
-            vkSwapchain.swapchainImages[i],
+            vkSwapchain.swapchainImages[index],
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            m_cmdBuffers[i]);
+            cmd);
 
-        CommandBufferMgr::endCommandBuffer(m_cmdBuffers[i]);
-    }
+        CommandBufferMgr::endCommandBuffer(cmd);
+
 
 
 }

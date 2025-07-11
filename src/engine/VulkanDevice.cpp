@@ -19,6 +19,7 @@ VulkanDevice::VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> D
     enumeratePhysicalDevices(VKinst);
 
     getPhysicalDeviceQueuesAndProperties();
+
     getGraphicsQueueHandle();
 
     createDevice(DeviceExtensions);
@@ -31,6 +32,8 @@ VulkanDevice::VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> D
     vkContext.allocator = &allocator;
     vkContext.graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
     vkContext.queue = queue;
+
+
 }
 
 VulkanDevice::~VulkanDevice()
@@ -64,13 +67,12 @@ VkResult VulkanDevice::enumeratePhysicalDevices(VkInstance &VKinst)
     assert(Result == VK_SUCCESS);
 
     // TODO: rank physical devices based on their properties and pick the bes one
-    // VkPhysicalDeviceProperties physicalDeviceProp;
-    // vkGetPhysicalDeviceProperties(physicalDevices[0],&physicalDeviceProp);
+    vkGetPhysicalDeviceProperties(physicalDevices[0],&gpuPros);
 
     // pick the first
     gpu = physicalDevices[0];
 
-    Logger::log(0, "[Logger][Device] Physical device picked\n");
+    Logger::log(0, "[Logger][Device] Physical device picked ({})\n",gpuPros.deviceName);
 
     return Result;
 }
@@ -109,7 +111,12 @@ void VulkanDevice::getGraphicsQueueHandle()
 
     }
 
-    Logger::log(0, "[Logger][Device] Graphics queue could not belocated\n");
+    else
+    {
+        Logger::log(0, "[Logger][Device] Graphics queue could not belocated\n");
+    }
+    
+
 
 }
 

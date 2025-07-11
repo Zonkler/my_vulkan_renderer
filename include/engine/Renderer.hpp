@@ -12,7 +12,7 @@
 #include "engine/VulkanQueue.hpp"
 #include "engine/Shader.hpp"
 #include "engine/VulkanGFXPipeline.hpp"
-
+#include "engine/VulkanVertexBuffer.hpp"
 #include "engine/VulkanContext.hpp"
 #include <SDL.h>
 
@@ -32,7 +32,8 @@ public:
     VulkanSwapchain& vkSwapchain;
     VulkanQueue             m_vkQueue;
     VulkanGFXPipeline       m_GFXPipeline;
-
+    std::unique_ptr<Model>         triangle;
+    
     bool running = false;
 
     void processEvents();
@@ -41,7 +42,7 @@ public:
     void createCommandPool();							// Create command pool
 	void buildSwapChainAndDepthImage();					// Create swapchain color image and depth image
 	void createDepthImage();							// Create depth image
-    void recordCommandbuffers();
+    void recordCommandbuffers(uint32_t index);
 
     VkCommandPool		cmdPool;
 	VkCommandBuffer		cmdDepthImage;	// Command buffer for depth image layout

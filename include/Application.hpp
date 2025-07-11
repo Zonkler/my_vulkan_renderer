@@ -8,6 +8,7 @@
 #include "engine/VulkanDevice.hpp"
 #include "engine/VulkanSwapchain.hpp"
 #include "engine/Renderer.hpp"
+#include <glm/glm.hpp>
 class Application{
 public:
     Application(VulkanRenderData& rdata);
@@ -18,7 +19,7 @@ public:
     
     void run();
     void processEvents();
-
+void updateCameraPosition();
 private:
     VulkanRenderData& m_rdata;
     VulkanContext m_vkContext;
