@@ -33,6 +33,7 @@ window::window(VulkanRenderData& rData){
         //return 0;
     }
 
+    SDL_SetWindowResizable(rData.window,SDL_TRUE);
     // Keep a pointer to the Rdata window so it can be deleted later on
     m_window = rData.window;
 

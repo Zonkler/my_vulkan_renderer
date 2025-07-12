@@ -6,7 +6,7 @@
 #include "engine/Shader.hpp"
 class VulkanGFXPipeline
 {
-private:
+public:
 
     VkDevice m_device = nullptr;
     VkPipeline m_pipeline = nullptr;

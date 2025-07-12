@@ -1,7 +1,7 @@
 #include "engine/VulkanGFXPipeline.hpp"
 #include "tools/tools.hpp"
 #include "engine/VulkanVertexBuffer.hpp"
-
+#include "engine/VulkanRenderdata.hpp"
 void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat){
 
     m_device = Device;
@@ -98,11 +98,18 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
         .pAttachments = &BlendAttachState
     };
 
+    VkPushConstantRange pushConstantrange{};
+    pushConstantrange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantrange.offset = 0;
+    pushConstantrange.size = 80;
 
     VkPipelineLayoutCreateInfo LayoutInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 0,
-        .pSetLayouts = nullptr
+        .pSetLayouts = nullptr,
+        .pushConstantRangeCount=1,
+        .pPushConstantRanges = &pushConstantrange
+
     };
 
     vkCreatePipelineLayout(m_device,&LayoutInfo,nullptr,&m_pipelineLayout);
@@ -150,6 +157,8 @@ void VulkanGFXPipeline::init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPa
 
 void VulkanGFXPipeline::bind(VkCommandBuffer cmdbuff){
     vkCmdBindPipeline(cmdbuff,VK_PIPELINE_BIND_POINT_GRAPHICS,m_pipeline);
+
+    
 }
 
 VulkanGFXPipeline::~VulkanGFXPipeline(){

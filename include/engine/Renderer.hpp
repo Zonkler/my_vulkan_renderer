@@ -14,6 +14,8 @@
 #include "engine/VulkanGFXPipeline.hpp"
 #include "engine/VulkanVertexBuffer.hpp"
 #include "engine/VulkanContext.hpp"
+#include "model/gameobject.hpp"
+#include "tools/camera.hpp"
 #include <SDL.h>
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT;
@@ -21,19 +23,21 @@
 
 class Renderer {
 public:
-    Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,VkSwapchainKHR& swapchain,VulkanSwapchain& vkSwap);
+    Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,std::shared_ptr<VulkanSwapchain> swapchain);
     ~Renderer();
-
+   
+    void recreateSwapchain(std::shared_ptr<VulkanSwapchain> swapchain);
     void run();
 
 
 public:
     VulkanRenderData&        renderData;
-    VulkanSwapchain& vkSwapchain;
+    std::shared_ptr<VulkanSwapchain> vkSwapchain;
+     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VulkanQueue             m_vkQueue;
     VulkanGFXPipeline       m_GFXPipeline;
-    std::unique_ptr<Model>         triangle;
-    
+    std::shared_ptr<Model>         triangle;
+    Camera m_camera;
     bool running = false;
 
     void processEvents();
@@ -67,7 +71,7 @@ public:
 
 
     std::vector<std::unique_ptr<Shader>> ShaderModules;
-    
+    std::vector<gameobject> gameObjects;
     VulkanContext& m_vkContext;
 
     

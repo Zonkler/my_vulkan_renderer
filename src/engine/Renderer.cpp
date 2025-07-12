@@ -7,7 +7,7 @@
 
 #define VMA_IMPLEMENTATION
 #include "tools/exception.hpp"
-
+#include "engine/VulkanRenderdata.hpp"
 #include <vma/vk_mem_alloc.h>
 #include "engine/VulkanSwapchain.hpp"
 #include "engine/Wrapper.hpp"
@@ -16,13 +16,15 @@
 #include "engine/VulkanContext.hpp"
 #include "tools/VulkanTools.hpp"
 #include "engine/VulkanVertexBuffer.hpp"
-Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, VkSwapchainKHR &swapchain, VulkanSwapchain &vkSwap) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(vkSwap)
+#include "model/gameobject.hpp"
+#include "tools/camera.hpp"
+Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::shared_ptr<VulkanSwapchain> swapchain2) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(std::move(swapchain2))
 {
     // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
     memset(&Depth, 0, sizeof(Depth));
 
     allocator = m_vkContext.allocator;
-
+    swapchain = vkSwapchain->swapChain;
     createCommandPool();
     createDepthImage();
     buildSwapChainAndDepthImage();
@@ -32,12 +34,19 @@ Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, VkSwapchai
     ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_VERTEX_BIT, "skibidi", "../shaders/main.vert.spv"));
     ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_FRAGMENT_BIT, "skibidi2", "../shaders/main.frag.spv"));
 
-    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain.format, Depth.format);
+    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
 
-    triangle = std::make_unique<Model>(*allocator);
+    triangle = std::make_shared<Model>(*allocator);
+    auto gameObj = gameobject::createGameObject();
+    gameObj.model = triangle;
+    gameObj.transform2D.translation = {.0f,.0f,2.5f};
+    gameObj.transform2D.scale = {0.5f,0.5f,0.5f};
+    gameObjects.emplace_back(gameObj);
+
     m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
     CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, &m_cmdBuffers[0], nullptr, m_cmdBuffers.size());
-
+    m_camera.setViewDirection(glm::vec3(0.f),glm::vec3(0.5f,0.f,1.f));
+    m_camera.setPerspectiveProjection(glm::radians(50.f),vkSwapchain->extentAspectRatio(),0.1f,10.f);
 
 }
 
@@ -98,10 +107,10 @@ void Renderer::destroyCommandBuffer()
 }
 
 void Renderer::recordCommandbuffers(uint32_t index){
-
+  
     auto& cmd = m_cmdBuffers[index];
     vkResetCommandBuffer(m_cmdBuffers[index], 0); // required if re-recording
-    VkClearColorValue Clearcolor = {0.3f, 0.3f, 0.3f, 0.3f};
+    VkClearColorValue Clearcolor = {0.1f, 0.1f, 0.1f, 0.1f};
     VkClearValue clearValue;
     clearValue.color = Clearcolor;
 
@@ -113,7 +122,7 @@ void Renderer::recordCommandbuffers(uint32_t index){
 
         CommandBufferMgr::beginCommandBuffer(cmd, nullptr);
 
-        vkutils::setImageLayout(vkSwapchain.swapchainImages[index], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        vkutils::setImageLayout(vkSwapchain->swapchainImages[index], VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                 VK_ACCESS_NONE,
                                 cmd);
@@ -121,7 +130,7 @@ void Renderer::recordCommandbuffers(uint32_t index){
         // Begin dynamic rendering
         VkRenderingAttachmentInfo colorAttachment{
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = vkSwapchain.colorBuffer[index].view,
+            .imageView = vkSwapchain->colorBuffer[index].view,
             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -155,14 +164,31 @@ void Renderer::recordCommandbuffers(uint32_t index){
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
 
-                // 🔹 Issue draw call
-        vkCmdDraw(cmd, 3, 1, 0, 0);
+        auto projectionView = m_camera.getProjection() * m_camera.getView();
+
+            for (auto& obj : gameObjects)
+            {   
+                obj.transform2D.rotation.y = glm::mod(obj.transform2D.rotation.y +0.0001f,glm::two_pi<float>());
+                obj.transform2D.rotation.x = glm::mod(obj.transform2D.rotation.y +0.00005f,glm::two_pi<float>());
+
+                VkPushConstants push{};
+                //push.offset= obj.transform2D.translation;
+                push.color = obj.color;
+                push.transform = projectionView * obj.transform2D.mat4();
+                vkCmdPushConstants(cmd,m_GFXPipeline.m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+                ,0,sizeof(VkPushConstants),&push);
+
+
+                vkCmdDraw(cmd, static_cast<uint32_t>(triangle->m_mesh.m_vertices.size()), 1, 0, 0);
+
+            }
+
 
         // Drawing commands...
         vkCmdEndRendering(cmd);
 
         vkutils::setImageLayout(
-            vkSwapchain.swapchainImages[index],
+            vkSwapchain->swapchainImages[index],
             VK_IMAGE_ASPECT_COLOR_BIT,
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -266,7 +292,7 @@ void Renderer::createDepthImage()
 
 void Renderer::buildSwapChainAndDepthImage()
 {
-    vkSwapchain.createColorImageView(cmdDepthImage, *m_vkContext.device);
+    vkSwapchain->createColorImageView(cmdDepthImage, *m_vkContext.device);
 }
 
 void Renderer::destroyDepthBuffer()
@@ -280,4 +306,17 @@ void Renderer::destroyDepthBuffer()
     Logger::log(0, "[Logger][Renderer] Depth Buffer destroyed (VMA)\n");
 }
 
+void Renderer::recreateSwapchain(std::shared_ptr<VulkanSwapchain> swapchain2){
+        std::cout<<"hello";
 
+    vkDeviceWaitIdle(*m_vkContext.device);
+    destroyDepthBuffer();
+    vkSwapchain = std::move(swapchain2);
+    swapchain = vkSwapchain->swapChain;
+    buildSwapChainAndDepthImage();
+    std::cout<<"hello";
+    m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
+
+
+
+}

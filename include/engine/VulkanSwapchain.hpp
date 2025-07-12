@@ -18,7 +18,7 @@ public:
     VkFormat format;
     const VkInstance* m_instance;
     const VkDevice* m_DeviceObj;
-
+    const VulkanRenderData* m_rData;
     // Store the image surface capabilities
 	VkSurfaceCapabilitiesKHR	surfCapabilities;
 	
@@ -54,9 +54,11 @@ public:
     uint32_t currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
-
+     float extentAspectRatio() {
+        return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
+    }
     uint32_t getGraphicsQueueWithPresentationSupport(const VulkanDevice& Device);
-
+    
 
 public:
     VulkanSwapchain(const VulkanRenderData& rData,VulkanContext& vkContext, VulkanDevice& Device);

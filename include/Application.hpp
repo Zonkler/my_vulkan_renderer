@@ -8,6 +8,7 @@
 #include "engine/VulkanDevice.hpp"
 #include "engine/VulkanSwapchain.hpp"
 #include "engine/Renderer.hpp"
+#include <memory>
 #include <glm/glm.hpp>
 class Application{
 public:
@@ -16,7 +17,7 @@ public:
 
 
     bool running;
-    
+    bool resized = false;
     void run();
     void processEvents();
 void updateCameraPosition();
@@ -28,7 +29,7 @@ private:
     VulkanInstance m_instance;
     VulkanDebug m_debug;
     VulkanDevice m_device;
-    VulkanSwapchain m_swapchain;
+    std::shared_ptr<VulkanSwapchain> m_swapchain;
     Renderer m_renderer;
 };
 

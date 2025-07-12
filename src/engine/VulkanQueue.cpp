@@ -49,8 +49,16 @@ uint32_t VulkanQueue::acquireNextImage() {
     VkResult res = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX,
                                          imageAvailableSemaphores[currentFrame],
                                          VK_NULL_HANDLE, &imageIndex);
+
+    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+    {
+        Logger::log(0, "[Logger][Vulkan Queue] WINDOW RESIZED or SUBOPTIMAL SWAPCHAIN with code\n");
+        // Trigger swapchain recreation here
+    }
     assert(res == VK_SUCCESS);
 
+
+    
     // Wait for the fence of the image (if in use)
     if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(*m_device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
