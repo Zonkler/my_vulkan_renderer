@@ -27,7 +27,7 @@ VertexInputDescription Vertex::get_vertex_description(){
 	positionAttribute.offset = offsetof(Vertex, position);
 
 
-    	//Color will be stored at Location 2
+    //Color will be stored at Location 2
 	VkVertexInputAttributeDescription colorAttribute = {};
 	colorAttribute.binding = 0;
 	colorAttribute.location = 1;
@@ -137,6 +137,6 @@ void Model::upload_Model(){
     vmaMapMemory(m_allocator,m_mesh.m_vertexBuffer.m_allocation,&data);
     memcpy(data,m_mesh.m_vertices.data(),size);
     vmaUnmapMemory(m_allocator,m_mesh.m_vertexBuffer.m_allocation);
-   std::cout<<"MEMORY AND BUFFER CREATED with SIZE"<<size<<"\n";
+    std::cout<<"MEMORY AND BUFFER CREATED with SIZE"<<size<<"\n";
 
 }

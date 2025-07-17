@@ -14,11 +14,11 @@ int main() {
     renderData.rdWidth = 1280;
     renderData.rdHeight = 720; //720
     
-    renderData.appname = "Magma Core";
+    renderData.appname = "PyroCore";
 
     Application app(renderData);
     
     app.run();
-
+    
     return 0;
 }

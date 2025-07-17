@@ -5,22 +5,32 @@
 #include "engine/VulkanRenderdata.hpp"
 #include "engine/VulkanContext.hpp"
 
-class VulkanInstance
+namespace PyroCore
 {
-private:
-    VkApplicationInfo appInfo{};
-    VkInstanceCreateInfo instanceInfo{};
-    VkInstance vulkanInstance;
-
-public:
-    VulkanInstance(VulkanRenderData& rData,VulkanContext& vkContext);
-    ~VulkanInstance();
     
-    VkInstance& Get_VKinstance();
+    class VulkanInstance
+    {
+    private:
+        VkApplicationInfo appInfo{};
+        VkInstanceCreateInfo instanceInfo{};
+        VkInstance vulkanInstance;
+        VkSurfaceKHR * m_vulkanSurface;
+    public:
+        VulkanInstance(VulkanRenderData& rData,VulkanContext& vkContext);
 
-};
+        VulkanInstance(const VulkanInstance&)               = delete;
+        VulkanInstance(VulkanInstance&&)                    = delete;
+        VulkanInstance& operator=(const VulkanInstance&)    = delete;
+        VulkanInstance& operator=(VulkanInstance&&)         = delete;
+                        
 
+        ~VulkanInstance();
+        
+        VkInstance& Get_VKinstance();
 
+    };
+
+} // namespace PyroCore
 
 
 

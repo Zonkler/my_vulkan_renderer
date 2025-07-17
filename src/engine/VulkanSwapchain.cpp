@@ -10,16 +10,16 @@
 #include <cassert>
 #include <iostream>
 
-VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& vkContext, VulkanDevice& Device){
+namespace PyroCore
+{
+	
+
+
+VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& vkContext, PyroCore::VulkanDevice& Device,VkSwapchainKHR oldSwapchain){
 	m_instance = vkContext.instance;
 	m_DeviceObj = &Device.device;
 
-	auto result = SDL_Vulkan_CreateSurface(rData.window, *m_instance, &surface);
-    if (!result)
-    {
-        Logger::log(0,"[ERROR][Logger][Swapchain] SDL failed to create surface\n");
-
-    }
+	surface = vkContext.surface;
 
     auto index = getGraphicsQueueWithPresentationSupport(Device);
 	
@@ -29,8 +29,8 @@ VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& v
     getSurfaceCapabilitiesAndPresentMode(Device,rData);
 	printCapabilities();
 	managePresentMode();
-	createSwapChainColorBufferImages(Device);
-
+	createSwapChainColorBufferImages(Device,oldSwapchain);
+	
 	vkContext.swapchainExtent = &swapChainExtent;
 	vkContext.SwapchainImageCnt = swapchainImageCount;
 	vkContext.Format = format;
@@ -55,17 +55,9 @@ VulkanSwapchain::~VulkanSwapchain(){
 	}
 	Logger::log(0,"[Logger][Swapchain] Destroyed Swapchain\n");
 
-
-	if (surface != VK_NULL_HANDLE) {
-		vkDestroySurfaceKHR(*m_instance, surface, nullptr);
-		surface = VK_NULL_HANDLE;
-	}
-
-    Logger::log(0,"[Logger][Swapchain] Destroyed surface\n");
-
 }
 
-uint32_t VulkanSwapchain::getGraphicsQueueWithPresentationSupport(const VulkanDevice& Device){
+uint32_t VulkanSwapchain::getGraphicsQueueWithPresentationSupport(const PyroCore::VulkanDevice& Device){
   
 	uint32_t queueCount		= Device.queueFamilyCount;
 	const VkPhysicalDevice& gpu	= Device.gpu;
@@ -76,8 +68,6 @@ uint32_t VulkanSwapchain::getGraphicsQueueWithPresentationSupport(const VulkanDe
     for (size_t i = 0; i < queueCount; i++)
     {
         vkGetPhysicalDeviceSurfaceSupportKHR(gpu,i,surface,&supportsPresent[i]);
-
-
     }
     	
     uint32_t graphicsQueueNodeIndex = UINT32_MAX;
@@ -120,7 +110,7 @@ uint32_t VulkanSwapchain::getGraphicsQueueWithPresentationSupport(const VulkanDe
 
 }
 
-void  VulkanSwapchain::getSupportedFormats(const VulkanDevice& Device){
+void  VulkanSwapchain::getSupportedFormats(const PyroCore::VulkanDevice& Device){
 
     const VkPhysicalDevice gpu = Device.gpu;
 	VkResult  result;
@@ -152,7 +142,7 @@ void  VulkanSwapchain::getSupportedFormats(const VulkanDevice& Device){
 	
 }
 
-void VulkanSwapchain::getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& device, const VulkanRenderData& rData){
+void VulkanSwapchain::getSurfaceCapabilitiesAndPresentMode(const PyroCore::VulkanDevice& device, const VulkanRenderData& rData){
 	
 	VkResult result;
 	const VkPhysicalDevice &GPU = device.gpu;
@@ -286,8 +276,9 @@ void VulkanSwapchain::managePresentMode(){
 
 }
 
-void VulkanSwapchain::createSwapChainColorBufferImages(const VulkanDevice& Device)
+void VulkanSwapchain::createSwapChainColorBufferImages(const PyroCore::VulkanDevice& Device,VkSwapchainKHR oldSwapchain)
 {
+	
 	VkSwapchainCreateInfoKHR scInfo{};
 
 	scInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -301,14 +292,15 @@ void VulkanSwapchain::createSwapChainColorBufferImages(const VulkanDevice& Devic
 	scInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	scInfo.imageArrayLayers = 1;
 	scInfo.presentMode = swapchainPresentMode;
-	scInfo.oldSwapchain = VK_NULL_HANDLE;
+	scInfo.oldSwapchain = oldSwapchain;
 	scInfo.clipped = true;
 	scInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	scInfo.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;
 	scInfo.queueFamilyIndexCount = 0;
 	scInfo.pQueueFamilyIndices	= NULL;
-
+	
 	VkResult result = vkCreateSwapchainKHR(Device.device,&scInfo,nullptr,&swapChain);
+
 	
 
 	// Create the swapchain object
@@ -363,4 +355,5 @@ void VulkanSwapchain::createColorImageView(const VkCommandBuffer& cmd,const VkDe
 
 }
 
+} // namespace PyroCore
 

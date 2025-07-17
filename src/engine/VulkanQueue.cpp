@@ -10,18 +10,25 @@ void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queu
     m_device    = &Device;
     m_swapChain = swapchain;
 
-    vkGetDeviceQueue(Device,queueFamily,queueIndex,&m_queue);
-
+    vkGetDeviceQueue(Device, queueFamily, queueIndex, &m_queue);
     Logger::log(0,"[Logger][Vulkan Queue] Queue acquired \n");
+
+    // Reinitialize swapchain-size-dependent arrays
+    imagesInFlight.clear();
+    renderFinishedSemaphores.clear();
+    imageSemaphoreOwner.clear();
+
     imagesInFlight.resize(swapchainImageCount, VK_NULL_HANDLE);
     renderFinishedSemaphores.resize(swapchainImageCount);
+    imageSemaphoreOwner.resize(swapchainImageCount, SIZE_MAX);
+
     for (size_t i = 0; i < swapchainImageCount; i++) {
         VkSemaphoreCreateInfo semInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
         vkCreateSemaphore(*m_device, &semInfo, nullptr, &renderFinishedSemaphores[i]);
     }
-    createSemaphores();
 
-    imageSemaphoreOwner.resize(imagesInFlight.size(), SIZE_MAX);
+    createSemaphores();
+    currentFrame = 0;
 }
 
 void VulkanQueue::createSemaphores(){
@@ -45,17 +52,14 @@ void VulkanQueue::waitIdle(){
 }
 
 uint32_t VulkanQueue::acquireNextImage() {
+
+
     uint32_t imageIndex = 0;
     VkResult res = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX,
                                          imageAvailableSemaphores[currentFrame],
                                          VK_NULL_HANDLE, &imageIndex);
 
-    if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-    {
-        Logger::log(0, "[Logger][Vulkan Queue] WINDOW RESIZED or SUBOPTIMAL SWAPCHAIN with code\n");
-        // Trigger swapchain recreation here
-    }
-    assert(res == VK_SUCCESS);
+
 
 
     
@@ -139,6 +143,11 @@ void VulkanQueue::destroy() {
     // Wait for the queue to finish using any resources
     if (m_queue) {
         vkQueueWaitIdle(m_queue);
+    }
+
+        // Reset all in-flight fences
+    for (auto& fence : inFlightFences) {
+        if (fence) vkResetFences(*m_device, 1, &fence);
     }
 
     // Destroy per-frame semaphores and fences

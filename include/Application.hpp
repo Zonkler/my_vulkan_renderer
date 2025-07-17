@@ -10,6 +10,8 @@
 #include "engine/Renderer.hpp"
 #include <memory>
 #include <glm/glm.hpp>
+#include <SDL.h>
+#include <SDL_vulkan.h>
 class Application{
 public:
     Application(VulkanRenderData& rdata);
@@ -20,16 +22,18 @@ public:
     bool resized = false;
     void run();
     void processEvents();
-void updateCameraPosition();
+
+    void updateCameraPosition();
+
 private:
     VulkanRenderData& m_rdata;
     VulkanContext m_vkContext;
-    window m_window;
-    VulkanLayerAndExtension m_extensions;
-    VulkanInstance m_instance;
-    VulkanDebug m_debug;
-    VulkanDevice m_device;
-    std::shared_ptr<VulkanSwapchain> m_swapchain;
-    Renderer m_renderer;
+    PyroCore::window m_window;
+    PyroCore::VulkanLayerAndExtension m_extensions;
+    PyroCore::VulkanInstance m_instance;
+    PyroCore::VulkanDebug m_debug;
+    PyroCore::VulkanDevice m_device;
+    std::shared_ptr<PyroCore::VulkanSwapchain> m_swapchain;
+    PyroCore::Renderer m_renderer;
 };
 

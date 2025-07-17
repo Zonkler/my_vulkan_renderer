@@ -10,6 +10,7 @@ struct VulkanContext{
     VkDevice* device;
     VmaAllocator* allocator;
     VkQueue queue;
+    VkSurfaceKHR surface;
 
     uint32_t GraphicsQueueWithPresentationSupport;
     uint32_t graphicsQueueFamilyIndex;

@@ -10,7 +10,9 @@
 
 #include "engine/VulkanContext.hpp"
 
-
+namespace PyroCore
+{
+    
 VulkanDevice::VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> DeviceExtensions)
 {
 
@@ -32,7 +34,7 @@ VulkanDevice::VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> D
     vkContext.allocator = &allocator;
     vkContext.graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
     vkContext.queue = queue;
-
+    
 
 }
 
@@ -191,3 +193,5 @@ void VulkanDevice::initializeVMA(VkInstance &VKinst)
     vmaCreateAllocator(&allocatorInfo, &allocator);
     Logger::log(0, "[Logger][Device] VMA initialized\n");
 }
+
+} // namespace PyroCore

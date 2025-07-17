@@ -20,19 +20,21 @@
 
 #define NUM_SAMPLES VK_SAMPLE_COUNT_1_BIT;
 
-
+namespace PyroCore
+{
+    
 class Renderer {
 public:
-    Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,std::shared_ptr<VulkanSwapchain> swapchain);
+    Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,std::shared_ptr<PyroCore::VulkanSwapchain> swapchain);
     ~Renderer();
    
-    void recreateSwapchain(std::shared_ptr<VulkanSwapchain> swapchain);
+    void recreateSwapchain(std::shared_ptr<PyroCore::VulkanSwapchain>& swapchain);
     void run();
 
 
 public:
     VulkanRenderData&        renderData;
-    std::shared_ptr<VulkanSwapchain> vkSwapchain;
+    std::shared_ptr<PyroCore::VulkanSwapchain> vkSwapchain;
      VkSwapchainKHR swapchain = VK_NULL_HANDLE;
     VulkanQueue             m_vkQueue;
     VulkanGFXPipeline       m_GFXPipeline;
@@ -78,3 +80,4 @@ public:
 
 };
 
+} // namespace PyroCore

@@ -7,6 +7,26 @@
 
 class VulkanQueue
 {
+
+public: 
+    VulkanQueue() = default;
+
+    VulkanQueue(const VulkanQueue&)             = delete;
+    VulkanQueue(VulkanQueue&&)                  = delete;
+    VulkanQueue operator=(const VulkanQueue&)   = delete;
+    VulkanQueue operator=(VulkanQueue&&)        = delete;
+
+    ~VulkanQueue()= default;
+
+    void init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount);
+    void destroy();
+    uint32_t acquireNextImage();
+    void submitAsync(VkCommandBuffer& cmdBuf,uint32_t imageIndex);
+    void submitSync(VkCommandBuffer& cmdBuf);
+    void present(uint32_t imageIndex);
+    void waitIdle();
+    void waitForCurrentFrameFence();
+
 private:
     void createSemaphores();
     
@@ -25,18 +45,6 @@ private:
     std::vector<VkFence>                            imagesInFlight;
     std::vector<size_t>                             imageSemaphoreOwner;
 
-public: 
-    VulkanQueue() = default;
-    ~VulkanQueue()= default;
-
-    void init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount);
-    void destroy();
-    uint32_t acquireNextImage();
-    void submitAsync(VkCommandBuffer& cmdBuf,uint32_t imageIndex);
-    void submitSync(VkCommandBuffer& cmdBuf);
-    void present(uint32_t imageIndex);
-    void waitIdle();
-    void waitForCurrentFrameFence();
 };
 
 

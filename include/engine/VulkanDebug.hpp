@@ -1,23 +1,31 @@
 #pragma once
 #include <vulkan/vulkan.h>
 
-class VulkanDebug {
-public:
+namespace PyroCore{
 
-    VulkanDebug(VkInstance& instance);
-    ~VulkanDebug();
+    class VulkanDebug {
+    public:
 
-    int init(VkInstance& instance);
-    void destroy();
+        VulkanDebug(VkInstance& instance);
 
-private:
-    VkInstance * m_instance;
-    VkDebugUtilsMessengerEXT debugMessenger;
+        VulkanDebug(const VulkanDebug&)             = delete;    
+        VulkanDebug(VulkanDebug&&)                  = delete;
+        VulkanDebug operator=(const VulkanDebug&)   = delete;
+        VulkanDebug operator=(VulkanDebug&&)        = delete;
+        
+        ~VulkanDebug();
 
-    void setupDebugMessenger();
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-        VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-        void* pUserData);
-};
+    private:
+        VkInstance * m_instance;
+        VkDebugUtilsMessengerEXT debugMessenger;
+
+        void setupDebugMessenger();
+        
+        static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+            void* pUserData);
+    };
+
+} //namespace PyroCore

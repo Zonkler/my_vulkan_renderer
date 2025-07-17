@@ -169,3 +169,10 @@ VulkanGFXPipeline::~VulkanGFXPipeline(){
     Logger::log(0,"[Logger][Graphics Pipeline] Pipeline Layout destroyed\n");
 
 }
+
+void VulkanGFXPipeline::destroy(){
+    vkDestroyPipeline(m_device,m_pipeline,nullptr);
+    Logger::log(0,"[Logger][Graphics Pipeline] Pipeline destroyed\n");
+    vkDestroyPipelineLayout(m_device,m_pipelineLayout,nullptr);
+    Logger::log(0,"[Logger][Graphics Pipeline] Pipeline Layout destroyed\n");
+};

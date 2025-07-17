@@ -9,10 +9,15 @@ struct SwapChainBuffer{
 	VkImageView view;
 };
 
+namespace PyroCore
+{
+    
+
 
 class VulkanSwapchain
 {
 public:
+
     VkSurfaceKHR surface;
     std::vector<VkSurfaceFormatKHR> surfFormats;
     VkFormat format;
@@ -29,7 +34,7 @@ public:
     VkExtent2D swapChainExtent;
 
 
-    	// Swap chain object
+    // Swap chain object
 	VkSwapchainKHR swapChain;
 
 	// Stores present mode bitwise flag for the creation of swap chain
@@ -39,9 +44,9 @@ public:
     std::vector<VkImage>		swapchainImages;
     uint32_t swapchainImageCount;
 
-    	// List of color swap chain images
+    // List of color swap chain images
 	std::vector<SwapChainBuffer> colorBuffer;
-    	// Current drawing surface index in use
+    // Current drawing surface index in use
 	uint32_t currentColorBuffer;
 
     struct FrameSyncObjects {
@@ -57,21 +62,20 @@ public:
      float extentAspectRatio() {
         return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
     }
-    uint32_t getGraphicsQueueWithPresentationSupport(const VulkanDevice& Device);
+    uint32_t getGraphicsQueueWithPresentationSupport(const PyroCore::VulkanDevice& Device);
     
 
 public:
-    VulkanSwapchain(const VulkanRenderData& rData,VulkanContext& vkContext, VulkanDevice& Device);
+    VulkanSwapchain(const VulkanRenderData& rData,VulkanContext& vkContext, PyroCore::VulkanDevice& Device,VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
     ~VulkanSwapchain();
-    int init(const VulkanRenderData& rData, const VkInstance& Instance, VulkanDevice& Device/*,const VkCommandBuffer& cmd*/);
-    //void destroy();
 
-    void getSupportedFormats(const VulkanDevice& Device);
-    void getSurfaceCapabilitiesAndPresentMode(const VulkanDevice& device,const VulkanRenderData& rData);
+    void getSupportedFormats(const PyroCore::VulkanDevice& Device);
+    void getSurfaceCapabilitiesAndPresentMode(const PyroCore::VulkanDevice& device,const VulkanRenderData& rData);
     void printCapabilities();
     void managePresentMode();
-    void createSwapChainColorBufferImages(const VulkanDevice& Device);
+    void createSwapChainColorBufferImages(const PyroCore::VulkanDevice& Device,VkSwapchainKHR oldSwapchain);
     void createColorImageView(const VkCommandBuffer& cmd,const VkDevice& Device);
 
 };
 
+} // namespace PyroCore

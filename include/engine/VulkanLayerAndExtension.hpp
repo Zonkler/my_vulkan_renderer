@@ -3,22 +3,32 @@
 #include <vulkan/vulkan.h>
 #include "engine/VulkanRenderdata.hpp"
 
-class VulkanLayerAndExtension
+/*
+    NOTE:  
+    Non-copyable, non-movable: Retrieves all the extensions and layers needed
+    for Vulkan using SDL and also adds additional debug validation layers.
+*/
+
+namespace PyroCore
 {
-private:
+    class VulkanLayerAndExtension
+    {
+    private:
 
-    void gatherVulkanExtensions(VulkanRenderData& rData);
+        void gatherVulkanExtensions(VulkanRenderData& rData);
 
-public:
+    public:
 
-    VulkanLayerAndExtension(VulkanRenderData& rData);
-    ~VulkanLayerAndExtension() = default;
+        VulkanLayerAndExtension(VulkanRenderData& rData);
 
-    
+        VulkanLayerAndExtension(const VulkanLayerAndExtension&)            = delete;
+        VulkanLayerAndExtension(VulkanLayerAndExtension&&)                 = delete;
+        VulkanLayerAndExtension& operator=(const VulkanLayerAndExtension&) = delete;
+        VulkanLayerAndExtension& operator=(VulkanLayerAndExtension&&)      = delete;
 
+        ~VulkanLayerAndExtension() = default;
 
+    };
 
-};
-
-
+} //namespace PyroCore
 

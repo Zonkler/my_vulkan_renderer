@@ -12,16 +12,11 @@ Application::Application(VulkanRenderData& rdata) :
         m_instance(m_rdata,m_vkContext),
         m_debug(*m_vkContext.instance),
         m_device(m_vkContext,{VK_KHR_SWAPCHAIN_EXTENSION_NAME}),
-        m_swapchain(std::make_shared<VulkanSwapchain>(m_rdata,m_vkContext,m_device)),
+        m_swapchain(std::make_shared<PyroCore::VulkanSwapchain>(m_rdata,m_vkContext,m_device)),
         m_renderer(m_rdata,m_vkContext,m_swapchain)
-{
-
-
-};
+{};
 
 void Application::run(){
-    VkShaderStorageBufferData m_cameraSSBO;
-
     running = true;
 
     while (running)
@@ -46,13 +41,19 @@ void Application::processEvents(){
         case SDL_WINDOWEVENT:
             if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
-                std::cout<<"Changed window size to "<<  event.window.data1<<" and "<<  event.window.data2<<'\n';
+                std::cout << "[Logger][Application]Changed window size to " << event.window.data1 << " and " << event.window.data2 << '\n';
+                                
                 m_rdata.rdWidth = event.window.data1;
                 m_rdata.rdHeight = event.window.data2;
                 vkDeviceWaitIdle(*m_vkContext.device);
-                m_swapchain.reset();
-                m_swapchain = std::make_shared<VulkanSwapchain>(m_rdata,m_vkContext,m_device);
+
+
+                VkSwapchainKHR oldSwapchainHandle = m_swapchain ? m_swapchain->swapChain : VK_NULL_HANDLE;
+                m_swapchain = std::make_shared<PyroCore::VulkanSwapchain>(m_rdata, m_vkContext, m_device, oldSwapchainHandle);
+                
+
                 m_renderer.recreateSwapchain(m_swapchain);
+                
             }
 
     }

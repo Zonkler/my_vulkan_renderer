@@ -18,7 +18,11 @@
 #include "engine/VulkanVertexBuffer.hpp"
 #include "model/gameobject.hpp"
 #include "tools/camera.hpp"
-Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::shared_ptr<VulkanSwapchain> swapchain2) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(std::move(swapchain2))
+
+namespace PyroCore
+{
+    
+Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::shared_ptr<PyroCore::VulkanSwapchain> swapchain2) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(std::move(swapchain2))
 {
     // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
     memset(&Depth, 0, sizeof(Depth));
@@ -42,6 +46,12 @@ Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::share
     gameObj.transform2D.translation = {.0f,.0f,2.5f};
     gameObj.transform2D.scale = {0.5f,0.5f,0.5f};
     gameObjects.emplace_back(gameObj);
+
+    auto gameObj2 = gameobject::createGameObject();
+    gameObj2.model = triangle;
+    gameObj2.transform2D.translation = {1.0f,1.0f,2.5f};
+    gameObj2.transform2D.scale = {0.5f,0.5f,0.5f};
+    gameObjects.emplace_back(gameObj2);
 
     m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
     CommandBufferMgr::allocCommandBuffer(m_vkContext.device, cmdPool, &m_cmdBuffers[0], nullptr, m_cmdBuffers.size());
@@ -90,7 +100,6 @@ void Renderer::createCommandPool()
 
     res = vkCreateCommandPool(*m_vkContext.device, &cmdPoolInfo, NULL, &cmdPool);
     Logger::log(0, "[Logger][Renderer] Command pool created\n");
-    // assert(res == VK_SUCCESS);
 }
 
 void Renderer::destroyCommandPool()
@@ -184,7 +193,6 @@ void Renderer::recordCommandbuffers(uint32_t index){
             }
 
 
-        // Drawing commands...
         vkCmdEndRendering(cmd);
 
         vkutils::setImageLayout(
@@ -306,17 +314,20 @@ void Renderer::destroyDepthBuffer()
     Logger::log(0, "[Logger][Renderer] Depth Buffer destroyed (VMA)\n");
 }
 
-void Renderer::recreateSwapchain(std::shared_ptr<VulkanSwapchain> swapchain2){
-        std::cout<<"hello";
+void Renderer::recreateSwapchain(std::shared_ptr<PyroCore::VulkanSwapchain>& swapchain2){
 
     vkDeviceWaitIdle(*m_vkContext.device);
+    m_vkQueue.destroy();
+    m_GFXPipeline.destroy();
     destroyDepthBuffer();
-    vkSwapchain = std::move(swapchain2);
+    vkSwapchain = swapchain2;
     swapchain = vkSwapchain->swapChain;
+    createDepthImage();
     buildSwapChainAndDepthImage();
-    std::cout<<"hello";
     m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
-
+    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
 
 
 }
+
+} // namespace PyroCore

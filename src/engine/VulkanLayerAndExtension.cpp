@@ -5,6 +5,10 @@
 #include "engine/VulkanLayerAndExtension.hpp"
 #include "engine/VulkanRenderdata.hpp"
 
+
+namespace PyroCore
+{
+
 VulkanLayerAndExtension::VulkanLayerAndExtension(VulkanRenderData& rData){
     gatherVulkanExtensions(rData);
 }
@@ -34,7 +38,7 @@ void VulkanLayerAndExtension::gatherVulkanExtensions(VulkanRenderData& rData){
         std::cout<<'\t'<<extension_name<<'\n';
     }
 
-
-
 }
+
+} //namespace PyroCore
 
