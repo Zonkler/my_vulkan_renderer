@@ -5,6 +5,11 @@
 #include <iostream>
 #include <cassert>
 
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_vulkan.h>
+
+
 #define VMA_IMPLEMENTATION
 #include "tools/exception.hpp"
 #include "engine/VulkanRenderdata.hpp"
@@ -24,6 +29,7 @@ namespace PyroCore
     
 Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::shared_ptr<PyroCore::VulkanSwapchain> swapchain2) : renderData(rData), m_vkContext(vkContaxt), vkSwapchain(std::move(swapchain2))
 {
+    
     // Note: It's very important to initilize the member with 0 or respective value other wise it will break the system
     memset(&Depth, 0, sizeof(Depth));
 
@@ -33,24 +39,25 @@ Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::share
     createDepthImage();
     buildSwapChainAndDepthImage();
 
-    m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
-    
+    m_vkQueue = std::make_unique<VulkanQueue>(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
+
     ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_VERTEX_BIT, "skibidi", "../shaders/main.vert.spv"));
     ShaderModules.emplace_back(std::make_unique<Shader>(m_vkContext.device, VK_SHADER_STAGE_FRAGMENT_BIT, "skibidi2", "../shaders/main.frag.spv"));
 
-    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
+    m_GFXPipeline = std::make_unique<VulkanGFXPipeline>(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
 
     triangle = std::make_shared<Model>(*allocator);
+
     auto gameObj = gameobject::createGameObject();
     gameObj.model = triangle;
-    gameObj.transform2D.translation = {.0f,.0f,2.5f};
+    gameObj.transform2D.translation = {1.5f,0.5f,5.5f};
     gameObj.transform2D.scale = {0.5f,0.5f,0.5f};
     gameObjects.emplace_back(gameObj);
 
     auto gameObj2 = gameobject::createGameObject();
     gameObj2.model = triangle;
-    gameObj2.transform2D.translation = {1.0f,1.0f,2.5f};
-    gameObj2.transform2D.scale = {0.5f,0.5f,0.5f};
+    gameObj2.transform2D.translation = {1.5f,0.5f,2.5f};
+    gameObj2.transform2D.scale = {0.5f,.5f,0.5f};
     gameObjects.emplace_back(gameObj2);
 
     m_cmdBuffers.resize(m_vkContext.SwapchainImageCnt);
@@ -69,22 +76,22 @@ Renderer::~Renderer()
     }
     destroyDepthBuffer();
 
-    m_vkQueue.destroy();
+    //m_vkQueue.destroy();
     destroyCommandBuffer();
     destroyCommandPool();
 }
 
 void Renderer::renderFrame()
 {
-    m_vkQueue.waitForCurrentFrameFence();
+    m_vkQueue->waitForCurrentFrameFence();
 
-    uint32_t imageIndex = m_vkQueue.acquireNextImage();
+    uint32_t imageIndex = m_vkQueue->acquireNextImage();
 
     recordCommandbuffers(imageIndex);
 
-    m_vkQueue.submitAsync(m_cmdBuffers[imageIndex], imageIndex);
+    m_vkQueue->submitAsync(m_cmdBuffers[imageIndex], imageIndex);
 
-    m_vkQueue.present(imageIndex);
+    m_vkQueue->present(imageIndex);
 }
 
 void Renderer::createCommandPool()
@@ -167,7 +174,7 @@ void Renderer::recordCommandbuffers(uint32_t index){
             
         vkCmdBeginRendering(cmd, &renderInfo);
 
-        m_GFXPipeline.bind(cmd);
+        m_GFXPipeline->bind(cmd);
 
         VkBuffer vertexBuffers[] = { triangle->m_mesh.m_vertexBuffer.m_buffer };
         VkDeviceSize offsets[] = { 0 };
@@ -184,7 +191,7 @@ void Renderer::recordCommandbuffers(uint32_t index){
                 //push.offset= obj.transform2D.translation;
                 push.color = obj.color;
                 push.transform = projectionView * obj.transform2D.mat4();
-                vkCmdPushConstants(cmd,m_GFXPipeline.m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
+                vkCmdPushConstants(cmd,m_GFXPipeline->m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT
                 ,0,sizeof(VkPushConstants),&push);
 
 
@@ -317,15 +324,15 @@ void Renderer::destroyDepthBuffer()
 void Renderer::recreateSwapchain(std::shared_ptr<PyroCore::VulkanSwapchain>& swapchain2){
 
     vkDeviceWaitIdle(*m_vkContext.device);
-    m_vkQueue.destroy();
-    m_GFXPipeline.destroy();
+    
+    
     destroyDepthBuffer();
     vkSwapchain = swapchain2;
     swapchain = vkSwapchain->swapChain;
     createDepthImage();
     buildSwapChainAndDepthImage();
-    m_vkQueue.init(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
-    m_GFXPipeline.init(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
+    m_vkQueue = std::make_unique<VulkanQueue>(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
+    m_GFXPipeline = std::make_unique<VulkanGFXPipeline>(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
 
 
 }

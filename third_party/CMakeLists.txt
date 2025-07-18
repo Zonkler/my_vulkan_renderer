@@ -17,19 +17,22 @@ target_include_directories(vma INTERFACE vma)
 add_library(stb_image INTERFACE)
 target_include_directories(stb_image INTERFACE stb_image)
 
-# imgui
 add_library(imgui STATIC)
-target_include_directories(imgui PUBLIC imgui)
 target_sources(imgui PRIVATE
     imgui/imgui.cpp
     imgui/imgui_draw.cpp
     imgui/imgui_tables.cpp
     imgui/imgui_widgets.cpp
     imgui/imgui_demo.cpp
-    imgui/imgui_impl_sdl2.cpp
-    imgui/imgui_impl_vulkan.cpp
+    imgui/backends/imgui_impl_sdl2.cpp
+    imgui/backends/imgui_impl_vulkan.cpp
 )
-target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2 assimp::assimp)
+target_include_directories(imgui PUBLIC
+    imgui
+    imgui/backends
+)
+target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2)
+set_property(TARGET imgui PROPERTY CXX_STANDARD 20)
 
 # fmt
 add_subdirectory(fmt EXCLUDE_FROM_ALL)

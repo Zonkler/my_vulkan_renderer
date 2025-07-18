@@ -13,7 +13,6 @@ struct VertexInputDescription {
 	VkPipelineVertexInputStateCreateFlags flags = 0;
 };
 
-
 struct Vertex
 {
     glm::vec3 position;
@@ -28,16 +27,11 @@ struct AllocatedBuffer {
     VmaAllocation m_allocation;
 };
 
-
 struct Mesh {
 	std::vector<Vertex> m_vertices;
 
 	AllocatedBuffer m_vertexBuffer;
 };
-
-
-
-
 
 class Model
 {

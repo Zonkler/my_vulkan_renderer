@@ -35,9 +35,9 @@ public:
 public:
     VulkanRenderData&        renderData;
     std::shared_ptr<PyroCore::VulkanSwapchain> vkSwapchain;
-     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-    VulkanQueue             m_vkQueue;
-    VulkanGFXPipeline       m_GFXPipeline;
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    std::unique_ptr<VulkanQueue> m_vkQueue;
+    std::unique_ptr<VulkanGFXPipeline> m_GFXPipeline;
     std::shared_ptr<Model>         triangle;
     Camera m_camera;
     bool running = false;

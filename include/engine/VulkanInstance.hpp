@@ -15,6 +15,7 @@ namespace PyroCore
         VkInstanceCreateInfo instanceInfo{};
         VkInstance vulkanInstance;
         VkSurfaceKHR * m_vulkanSurface;
+        
     public:
         VulkanInstance(VulkanRenderData& rData,VulkanContext& vkContext);
 
@@ -23,7 +24,6 @@ namespace PyroCore
         VulkanInstance& operator=(const VulkanInstance&)    = delete;
         VulkanInstance& operator=(VulkanInstance&&)         = delete;
                         
-
         ~VulkanInstance();
         
         VkInstance& Get_VKinstance();

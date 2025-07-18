@@ -11,8 +11,6 @@ struct SwapChainBuffer{
 
 namespace PyroCore
 {
-    
-
 
 class VulkanSwapchain
 {
@@ -78,4 +76,4 @@ public:
 
 };
 
-} // namespace PyroCore
+} //namespace pyrocore

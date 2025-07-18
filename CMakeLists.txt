@@ -24,6 +24,7 @@ if(WIN32)
 else()
     set(RESOURCE_FILE "")  # no resource on Linux/macOS
 endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(vulkan_guide ${SOURCES} ${HEADERS} ${RESOURCE_FILE})
 
@@ -36,7 +37,7 @@ target_include_directories(vulkan_guide PUBLIC
 )
 
 target_link_libraries(vulkan_guide PUBLIC
-    vma glm Vulkan::Vulkan fmt::fmt stb_image SDL2::SDL2 vkbootstrap imgui
+    vma glm Vulkan::Vulkan fmt::fmt stb_image SDL2::SDL2 assimp::assimp vkbootstrap imgui
 )
 
 # Static link libgcc and libstdc++ to avoid runtime DLL issues with MinGW

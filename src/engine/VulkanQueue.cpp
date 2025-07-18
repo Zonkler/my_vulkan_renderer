@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount){
+VulkanQueue::VulkanQueue(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount){
     m_device    = &Device;
     m_swapChain = swapchain;
 
@@ -29,6 +29,10 @@ void VulkanQueue::init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queu
 
     createSemaphores();
     currentFrame = 0;
+}
+
+VulkanQueue::~VulkanQueue(){
+    this->destroy();
 }
 
 void VulkanQueue::createSemaphores(){

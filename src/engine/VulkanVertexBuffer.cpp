@@ -57,8 +57,6 @@ Model::~Model()
 }
 
 
-
-
 void Model::load_Model(){
 
   m_mesh.m_vertices={

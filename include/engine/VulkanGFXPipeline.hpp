@@ -14,11 +14,17 @@ public:
     VkDescriptorSetLayout m_descriptorSetLayout;
 
 public:
-    VulkanGFXPipeline() = default;
+    VulkanGFXPipeline(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat);
+
+    VulkanGFXPipeline(const VulkanGFXPipeline&)           = delete;
+    VulkanGFXPipeline(VulkanGFXPipeline&&)                = delete;
+    VulkanGFXPipeline operator=(const VulkanGFXPipeline&) = delete;
+    VulkanGFXPipeline operator=(VulkanGFXPipeline&&)      = delete;
+    
     ~VulkanGFXPipeline();
 
-    void init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat);
-    void destroy();
+   // void init(VkDevice& Device,VulkanRenderData& rdata,VkRenderPass RenderPass,std::vector<std::unique_ptr<Shader>>& ShaderModules,VkFormat colorFormat,VkFormat depthFormat);
+    //void destroy();
     void bind(VkCommandBuffer cmdbuff);
 };
 

@@ -12,8 +12,6 @@
 
 namespace PyroCore
 {
-	
-
 
 VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& vkContext, PyroCore::VulkanDevice& Device,VkSwapchainKHR oldSwapchain){
 	m_instance = vkContext.instance;
@@ -22,12 +20,12 @@ VulkanSwapchain::VulkanSwapchain(const VulkanRenderData& rData, VulkanContext& v
 	surface = vkContext.surface;
 
     auto index = getGraphicsQueueWithPresentationSupport(Device);
-	
+	vkContext.GraphicsQueueWithPresentationSupport = index;
 	Device.graphicsQueueWithPresentIndex = index;
 	
     getSupportedFormats(Device);
     getSurfaceCapabilitiesAndPresentMode(Device,rData);
-	printCapabilities();
+	//printCapabilities();
 	managePresentMode();
 	createSwapChainColorBufferImages(Device,oldSwapchain);
 	

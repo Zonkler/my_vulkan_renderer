@@ -23,8 +23,6 @@ public:
     void run();
     void processEvents();
 
-    void updateCameraPosition();
-
 private:
     VulkanRenderData& m_rdata;
     VulkanContext m_vkContext;

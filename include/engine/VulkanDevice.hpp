@@ -15,10 +15,10 @@ namespace PyroCore
     public:
         VulkanDevice(VulkanContext& vkContext ,std::vector<const char *> DeviceExtensions);
 
-        VulkanDevice(const VulkanDevice&)       = delete;
-        VulkanDevice(VulkanDevice&&)            = delete;
+        VulkanDevice(const VulkanDevice&)            = delete;
+        VulkanDevice(VulkanDevice&&)                 = delete;
         VulkanDevice operator=(const VulkanDevice&)  = delete;
-        VulkanDevice operator=(VulkanDevice&&)  = delete;
+        VulkanDevice operator=(VulkanDevice&&)       = delete;
 
         ~VulkanDevice();
 

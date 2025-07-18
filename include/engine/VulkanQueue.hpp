@@ -9,14 +9,14 @@ class VulkanQueue
 {
 
 public: 
-    VulkanQueue() = default;
+    VulkanQueue(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount);
 
     VulkanQueue(const VulkanQueue&)             = delete;
     VulkanQueue(VulkanQueue&&)                  = delete;
     VulkanQueue operator=(const VulkanQueue&)   = delete;
-    VulkanQueue operator=(VulkanQueue&&)        = delete;
+    VulkanQueue operator=(VulkanQueue&&)         = delete;
 
-    ~VulkanQueue()= default;
+    ~VulkanQueue();
 
     void init(VkDevice& Device, VkSwapchainKHR swapchain, uint32_t queueFamily,uint32_t queueIndex,uint32_t swapchainImageCount);
     void destroy();
