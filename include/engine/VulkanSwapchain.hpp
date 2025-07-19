@@ -57,7 +57,7 @@ public:
     uint32_t currentFrame = 0;
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
-     float extentAspectRatio() {
+    float extentAspectRatio() {
         return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height);
     }
     uint32_t getGraphicsQueueWithPresentationSupport(const PyroCore::VulkanDevice& Device);

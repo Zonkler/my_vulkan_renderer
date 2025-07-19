@@ -4,11 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <iostream>
 #include <cassert>
-
-#include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_vulkan.h>
-
+#include <chrono>
 
 #define VMA_IMPLEMENTATION
 #include "tools/exception.hpp"
@@ -51,7 +47,7 @@ Renderer::Renderer(VulkanRenderData &rData, VulkanContext &vkContaxt, std::share
     auto gameObj = gameobject::createGameObject();
     gameObj.model = triangle;
     gameObj.transform2D.translation = {1.5f,0.5f,5.5f};
-    gameObj.transform2D.scale = {0.5f,0.5f,0.5f};
+    gameObj.transform2D.scale = {1.f,1.f,1.f};
     gameObjects.emplace_back(gameObj);
 
     auto gameObj2 = gameobject::createGameObject();
@@ -334,6 +330,55 @@ void Renderer::recreateSwapchain(std::shared_ptr<PyroCore::VulkanSwapchain>& swa
     m_vkQueue = std::make_unique<VulkanQueue>(*m_vkContext.device, swapchain, m_vkContext.GraphicsQueueWithPresentationSupport, 0, m_vkContext.SwapchainImageCnt);
     m_GFXPipeline = std::make_unique<VulkanGFXPipeline>(*m_vkContext.device, renderData, m_renderPass, ShaderModules, vkSwapchain->format, Depth.format);
 
+
+}
+
+void Renderer::updateCameraFromRenderData(const VulkanRenderData& rdata, float frameTime){
+    float yaw   = glm::radians(rdata.rdViewAzimuth);
+    float pitch = glm::radians(rdata.rdViewElevation);
+    float roll  = 0.0f;  
+
+    const float c3 = glm::cos(roll);
+    const float s3 = glm::sin(roll);
+    const float c2 = glm::cos(pitch);
+    const float s2 = glm::sin(pitch);
+    const float c1 = glm::cos(yaw);
+    const float s1 = glm::sin(yaw);
+
+    glm::vec3 right{
+        (c1 * c3 + s1 * s2 * s3),
+        (c2 * s3),
+        (c1 * s2 * s3 - c3 * s1)
+    };
+    glm::vec3 up{
+        (c3 * s1 * s2 - c1 * s3),
+        (c2 * c3),
+        (c1 * c3 * s2 + s1 * s3)
+    };
+    glm::vec3 forward{
+        (c2 * s1),
+        (-s2),
+        (c1 * c2)
+    };
+
+    glm::vec3 moveDir =
+        static_cast<float>(rdata.rdMoveForward) * forward +
+        static_cast<float>(rdata.rdMoveRight)   * right +
+        static_cast<float>(rdata.rdMoveUp)      * up;
+
+    glm::vec3 cameraPos = rdata.rdCameraWorldPosition;
+    if (glm::length(moveDir) > 0.0f)
+        cameraPos += glm::normalize(moveDir) * 4.0f * frameTime;
+
+    m_camera.setViewYXZ(cameraPos, glm::vec3(pitch, yaw, roll));
+
+    m_camera.setPerspectiveProjection(
+        glm::radians(static_cast<float>(rdata.rdFieldOfView)),
+        static_cast<float>(rdata.rdWidth) / static_cast<float>(rdata.rdHeight),
+        0.1f, 100.0f
+    );
+
+    const_cast<VulkanRenderData&>(rdata).rdCameraWorldPosition = cameraPos;
 
 }
 

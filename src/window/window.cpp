@@ -33,6 +33,9 @@ namespace PyroCore
         }
 
         SDL_SetWindowResizable(rData.window,SDL_TRUE);
+        SDL_ShowCursor(SDL_DISABLE);
+        SDL_SetRelativeMouseMode(SDL_TRUE);
+
         m_window = rData.window;
 
         Logger::log(0,"[Logger][Window] SDL window ({0}x{1}) and vulkan library initialized\n",rData.rdWidth,rData.rdHeight);

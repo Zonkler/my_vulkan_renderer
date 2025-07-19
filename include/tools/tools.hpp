@@ -1,12 +1,8 @@
-/* simple Logger class */
+
 #pragma once
 #include <cstdio>
 #include <format>
 #include <iostream>
-
-//#define MAGMA_ASSERT (cond)
-
-
 
 class Logger {
   public:

@@ -17,7 +17,7 @@ public:
     Application(VulkanRenderData& rdata);
     ~Application() = default;
 
-
+    bool mouseLookEnabled = true;
     bool running;
     bool resized = false;
     void run();

@@ -110,5 +110,5 @@ struct VulkanRenderData {
 
   float rdViewAzimuth = 330.0f;
   float rdViewElevation = -20.0f;
-  glm::vec3 rdCameraWorldPosition = glm::vec3(2.0f, 5.0f, 7.0f);
+  glm::vec3 rdCameraWorldPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 };

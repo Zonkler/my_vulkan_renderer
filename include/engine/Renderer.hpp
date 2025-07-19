@@ -28,9 +28,11 @@ public:
     Renderer(VulkanRenderData &rData, VulkanContext& vkContaxt,std::shared_ptr<PyroCore::VulkanSwapchain> swapchain);
     ~Renderer();
    
+
     void recreateSwapchain(std::shared_ptr<PyroCore::VulkanSwapchain>& swapchain);
     void run();
 
+    void updateCameraFromRenderData(const VulkanRenderData& rdata, float frameTime);
 
 public:
     VulkanRenderData&        renderData;
